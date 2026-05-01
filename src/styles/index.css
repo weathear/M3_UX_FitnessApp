@@ -1,0 +1,52 @@
+@import './fonts.css';
+@import './tailwind.css';
+@import './theme.css';
+
+/* FitAI global overrides */
+html, body, #root {
+  background: #000000;
+  min-height: 100vh;
+  overscroll-behavior: none;
+}
+
+/* Custom scrollbar hide */
+* {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+*::-webkit-scrollbar {
+  display: none;
+}
+
+/* Range input styling */
+input[type="range"] {
+  -webkit-appearance: none;
+  appearance: none;
+  height: 6px;
+  border-radius: 9999px;
+  background: #1a1a1a;
+  outline: none;
+}
+input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: #CCFF00;
+  cursor: pointer;
+  border: 2px solid #000;
+}
+input[type="range"]::-moz-range-thumb {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: #CCFF00;
+  cursor: pointer;
+  border: 2px solid #000;
+}
+
+/* Number input arrows hide */
+input[type="number"]::-webkit-inner-spin-button,
+input[type="number"]::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+}
