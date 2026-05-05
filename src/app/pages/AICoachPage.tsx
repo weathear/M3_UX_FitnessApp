@@ -7,69 +7,9 @@ import {
 } from "lucide-react";
 import { useApp } from "../context/AppContext";
 import { fullDayNames, dayNames } from "../data/mockData";
+import { getAIResponseStreaming, generateWorkoutPlan, refineWorkoutPlan, expertAttribution, getRandomExpert, type WorkoutPlan } from "../utils/gemini";
 
 const ACCENT = "#CCFF00";
-
-// ─── Mock AI responses ───────────────────────────────────────────────────────
-
-const expertAttribution = [
-  { name: "Arnold Schwarzenegger", title: "7x Mr. Olympia Champion" },
-  { name: "Rich Froning", title: "4x CrossFit Games Champion" },
-  { name: "Ronnie Coleman", title: "8x Mr. Olympia Champion" },
-  { name: "Simone Biles", title: "Olympic Gymnastics Champion" },
-];
-
-function getAIResponse(msg: string): { text: string; expert: { name: string; title: string } } {
-  const lower = msg.toLowerCase();
-  const expert = expertAttribution[Math.floor(Math.random() * expertAttribution.length)];
-
-  if (lower.includes("protein") || lower.includes("nutrition") || lower.includes("diet") || lower.includes("eat")) {
-    return {
-      text: "For muscle building, aim for 1.6–2.2g of protein per kg of body weight daily. Prioritize whole food sources: chicken, eggs, fish, legumes. Time your protein intake around workouts — a serving 30–60 min post-workout accelerates recovery. Don't neglect carbohydrates — they're your training fuel. Keep fats moderate and focus on unsaturated sources like avocado and nuts.",
-      expert,
-    };
-  }
-  if (lower.includes("sleep") || lower.includes("recovery") || lower.includes("rest")) {
-    return {
-      text: "Sleep is when your muscles actually grow. Aim for 7–9 hours of quality sleep per night. During deep sleep, growth hormone peaks and protein synthesis is maximized. If you're training hard, don't underestimate active recovery — foam rolling, stretching, and low-intensity walks keep blood flowing without adding stress. A nap of 20–30 minutes can also boost afternoon training performance.",
-      expert,
-    };
-  }
-  if (lower.includes("weight loss") || lower.includes("fat") || lower.includes("lose") || lower.includes("cut")) {
-    return {
-      text: "Sustainable fat loss comes from a moderate caloric deficit (300–500 kcal/day) combined with strength training to preserve muscle. Don't slash calories drastically — you'll lose muscle and crash your metabolism. Prioritize protein, keep resistance training in your routine, and add cardio as a supplemental tool, not the primary driver. Track progress by photos and measurements, not just scale weight.",
-      expert,
-    };
-  }
-  if (lower.includes("beginner") || lower.includes("start") || lower.includes("new")) {
-    return {
-      text: "Welcome to the journey! Start with 3 full-body sessions per week using compound movements: squat, deadlift, bench press, overhead press, and rows. Master form before adding weight — a perfect light set is worth more than a sloppy heavy one. Consistency beats intensity at the start. You don't need fancy programs; you need to show up repeatedly. Expect noticeable strength gains in 4–8 weeks.",
-      expert,
-    };
-  }
-  if (lower.includes("muscle") || lower.includes("strength") || lower.includes("bulk") || lower.includes("gain")) {
-    return {
-      text: "Building muscle requires progressive overload — consistently adding more weight, reps, or sets over time. Train each muscle group 2x per week for optimal stimulus. Focus on compound movements (squat, deadlift, bench, rows) as your foundation, then add isolation work. A slight caloric surplus (200–300 kcal) with high protein intake creates the anabolic environment needed for growth. Track your lifts and aim to beat your previous session.",
-      expert,
-    };
-  }
-  if (lower.includes("cardio") || lower.includes("run") || lower.includes("endurance")) {
-    return {
-      text: "For endurance, build your aerobic base with Zone 2 training — a conversational pace where you could hold a sentence comfortably. Do this 3–4x per week. Add one high-intensity session (HIIT or tempo run) to improve lactate threshold. Don't neglect strength training — stronger legs mean more efficient running mechanics. Increase weekly mileage by no more than 10% per week to avoid injury.",
-      expert,
-    };
-  }
-  if (lower.includes("motivation") || lower.includes("give up") || lower.includes("unmotivated") || lower.includes("cheat")) {
-    return {
-      text: "Motivation is temporary; discipline is permanent. On the days you don't feel like training, lower the bar — commit to just showing up for 10 minutes. More often than not, you'll finish the full session. Build identity-based habits: stop saying 'I'm trying to work out' and start saying 'I'm an athlete.' Track small wins daily. Progress compounds — what feels impossible in week 1 becomes your warmup in month 6.",
-      expert,
-    };
-  }
-  return {
-    text: "Great question! The foundation of any fitness goal is consistency, progressive overload, and adequate recovery. Whether your goal is fat loss, muscle gain, or improved endurance, training 3–5 days per week with purpose and supporting it with quality nutrition and sleep will produce results. What specific aspect would you like to dive deeper into — training, nutrition, recovery, or mindset?",
-    expert,
-  };
-}
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -81,14 +21,7 @@ interface Message {
   timestamp: Date;
 }
 
-interface GeneratedPlan {
-  name: string;
-  type: string;
-  duration: number;
-  exercises: { name: string; sets?: number; reps?: number; durationSec?: number; muscleGroups: string[] }[];
-  totalCalories: number;
-  totalTime: number;
-}
+type GeneratedPlan = WorkoutPlan;
 
 // ─── Main Component ──────────────────────────────────────────────────────────
 
@@ -175,7 +108,7 @@ function ChatTab() {
       id: "welcome",
       role: "ai",
       text: `Hey ${userProfile.name || "Athlete"}! I'm your AI coach, backed by methods from world-class athletes. Ask me anything about training, nutrition, recovery, or motivation. What's on your mind?`,
-      expert: expertAttribution[0],
+      expert: getRandomExpert(),
       timestamp: new Date(),
     },
   ]);
@@ -196,23 +129,60 @@ function ChatTab() {
 
   const sendMessage = async (text: string) => {
     if (!text.trim() || loading) return;
+    
     const userMsg: Message = { id: Date.now().toString(), role: "user", text, timestamp: new Date() };
     setMessages(prev => [...prev, userMsg]);
     setInput("");
     setLoading(true);
 
-    await new Promise(r => setTimeout(r, 1200 + Math.random() * 800));
-
-    const { text: responseText, expert } = getAIResponse(text);
-    const aiMsg: Message = {
-      id: (Date.now() + 1).toString(),
+    const aiMsgId = (Date.now() + 1).toString();
+    const expert = getRandomExpert();
+    
+    // Üres AI message hozzáadása
+    setMessages(prev => [...prev, {
+      id: aiMsgId,
       role: "ai",
-      text: responseText,
+      text: "",
       expert,
       timestamp: new Date(),
-    };
-    setMessages(prev => [...prev, aiMsg]);
-    setLoading(false);
+    }]);
+
+    try {
+      // Streaming az API-ból
+      for await (const chunk of getAIResponseStreaming(text)) {
+        setMessages(prev => {
+          const updated = [...prev];
+          const msgIdx = updated.findIndex(m => m.id === aiMsgId);
+          if (msgIdx !== -1) {
+            updated[msgIdx] = {
+              ...updated[msgIdx],
+              text: updated[msgIdx].text + chunk,
+            };
+          }
+          return updated;
+        });
+      }
+    } catch (error) {
+      console.error("AI Coach error:", error);
+      const fallbackText =
+        error instanceof Error && error.message.includes("Invalid Gemini API key")
+          ? "Gemini API key invalid. Please generate a new key in Google AI Studio and update .env.local."
+          : "Sorry, I encountered an issue. Please try again or check your API key in .env.local";
+      // Fallback üzenet
+      setMessages(prev => {
+        const updated = [...prev];
+        const msgIdx = updated.findIndex(m => m.id === aiMsgId);
+        if (msgIdx !== -1) {
+          updated[msgIdx] = {
+            ...updated[msgIdx],
+            text: fallbackText,
+          };
+        }
+        return updated;
+      });
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -463,10 +433,16 @@ function PlanGeneratorTab() {
 
   const generate = async () => {
     setGenerating(true);
-    await new Promise(r => setTimeout(r, 2000));
-    const plan = generatePlan({ type, planType, duration, equipment, muscleGroups: muscles, intensity });
-    setGeneratedPlan(plan);
-    setGenerating(false);
+    try {
+      const plan = await generateWorkoutPlan({ type, planType, duration, equipment, muscleGroups: muscles, intensity });
+      setGeneratedPlan(plan);
+    } catch (error) {
+      console.error("Gemini plan generation failed:", error);
+      const plan = generatePlan({ type, planType, duration, equipment, muscleGroups: muscles, intensity });
+      setGeneratedPlan(plan);
+    } finally {
+      setGenerating(false);
+    }
   };
 
   const reset = () => {
@@ -521,6 +497,17 @@ function PlanGeneratorTab() {
     if (!generatedPlan || !prompt.trim() || refining) return;
     setRefining(true);
     setRefineInput("");
+
+    try {
+      const { plan, summary } = await refineWorkoutPlan(generatedPlan, prompt.trim());
+      setGeneratedPlan(plan);
+      setRefinements(prev => [...prev, { prompt: prompt.trim(), message: summary || "Updated the workout plan with Gemini." }]);
+      setRefining(false);
+      return;
+    } catch (error) {
+      console.error("Gemini refinement failed:", error);
+    }
+
     await new Promise(r => setTimeout(r, 1400 + Math.random() * 600));
 
     const lower = prompt.toLowerCase();
