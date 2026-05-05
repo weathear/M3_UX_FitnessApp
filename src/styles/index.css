@@ -3,10 +3,29 @@
 @import './theme.css';
 
 /* FitAI global overrides */
-html, body, #root {
+html, body {
+  margin: 0;
+  padding: 0;
+  width: 100vw;
+  height: 100dvh; /* dvh: Dynamic Viewport Height (jobb mobilon, mint a sima vh) */
   background: #000000;
-  min-height: 100vh;
-  overscroll-behavior: none;
+  
+  /* TELJES GÖRGETÉS, NAGYÍTÁS ÉS BÖNGÉSZŐS HÚZÁS LETILTÁSA */
+  overflow: hidden; 
+  overscroll-behavior: none; 
+  touch-action: none; 
+}
+
+#root {
+  width: 100%;
+  height: 100%;
+  position: relative;
+  overflow: hidden; /* A root is fix, nem lóg ki semmi */
+  background: #000000;
+  
+  /* HA ASZTALI BÖNGÉSZŐBEN FIX MOBIL MÉRETET SZERETNÉL, VEDD KI A KOMMENTET INNEN: */
+  /* margin: 0 auto; */
+  /* max-width: 430px; */
 }
 
 /* Custom scrollbar hide */

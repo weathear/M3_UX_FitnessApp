@@ -114,8 +114,13 @@ export function BrowsePage() {
               animate={{ y: 0 }}
               exit={{ y: 120 }}
               transition={{ type: "spring", damping: 25 }}
-              className="w-full max-w-[430px] p-6 rounded-t-3xl"
-              style={{ background: "#111113", border: "1px solid #27272A" }}
+              className="w-full max-w-[430px] px-6 pt-6 rounded-t-3xl"
+              style={{ 
+                background: "#111113", 
+                border: "1px solid #27272A",
+                // Megnövelve 90px-re
+                paddingBottom: "calc(env(safe-area-inset-bottom, 16px) + 90px)" 
+              }}
               onClick={e => e.stopPropagation()}
             >
               <div className="w-10 h-1 bg-[#3F3F46] rounded-full mx-auto mb-4" />
@@ -150,87 +155,113 @@ export function BrowsePage() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 z-50 flex items-end justify-center"
-            style={{ background: "rgba(0,0,0,0.85)" }}
+            className="fixed inset-0 z-[100] flex items-end justify-center"
+            style={{ background: "rgba(0,0,0,0.85)", touchAction: "none" }} 
             onClick={() => setShowFilterModal(false)}
           >
             <motion.div
-              initial={{ y: 200 }}
+              initial={{ y: "100%" }}
               animate={{ y: 0 }}
-              exit={{ y: 200 }}
-              transition={{ type: "spring", damping: 28 }}
-              className="w-full max-w-[430px] p-6 rounded-t-3xl"
-              style={{ background: "#111113", border: "1px solid #27272A" }}
+              exit={{ y: "100%" }}
+              transition={{ type: "spring", damping: 28, stiffness: 300 }}
+              className="w-full max-w-[430px] rounded-t-3xl flex flex-col overflow-hidden" 
+              style={{ 
+                background: "#111113", 
+                borderTop: "1px solid #27272A",
+                borderLeft: "1px solid #27272A",
+                borderRight: "1px solid #27272A",
+                maxHeight: "85vh" 
+              }}
               onClick={e => e.stopPropagation()}
             >
-              <div className="w-10 h-1 bg-[#3F3F46] rounded-full mx-auto mb-5" />
-              <div className="flex items-center justify-between mb-5">
-                <h3 className="text-white text-lg font-bold">Filters</h3>
+              <div className="pt-5 px-6 pb-2 shrink-0">
+                <div className="w-10 h-1 bg-[#3F3F46] rounded-full mx-auto mb-5" />
+                <div className="flex items-center justify-between">
+                  <h3 className="text-white text-lg font-bold">Filters</h3>
+                  <button
+                    onClick={() => { setCatFilter("all"); setLevelFilter("all"); setTypeFilter("all"); setActiveQuick("all-cat"); }}
+                    className="text-xs px-3 py-1.5 rounded-full"
+                    style={{ color: ACCENT, background: `${ACCENT}15`, border: `1px solid ${ACCENT}30` }}
+                  >
+                    Reset
+                  </button>
+                </div>
+              </div>
+
+              <div 
+                className="px-6 py-4 flex-1 overflow-y-auto" 
+                style={{ 
+                  minHeight: 0,
+                  WebkitOverflowScrolling: "touch",
+                  touchAction: "pan-y",
+                  overscrollBehavior: "contain",
+                  scrollbarWidth: "none"
+                }}
+              >
+                <p className="text-[#A1A1AA] text-xs uppercase tracking-wider mb-2">Category</p>
+                <div className="flex gap-2 flex-wrap mb-6">
+                  {["all", "strength", "cardio", "stretching"].map(v => (
+                    <button key={v} onClick={() => setCatFilter(v)}
+                      className="px-3 py-1.5 rounded-full text-xs font-semibold transition-all"
+                      style={{ background: catFilter === v ? ACCENT : "#1C1C1E", color: catFilter === v ? "#000" : "#A1A1AA", border: `1px solid ${catFilter === v ? ACCENT : "#27272A"}` }}>
+                      {v === "all" ? "All" : v.charAt(0).toUpperCase() + v.slice(1)}
+                    </button>
+                  ))}
+                </div>
+
+                <p className="text-[#A1A1AA] text-xs uppercase tracking-wider mb-2">Level</p>
+                <div className="flex gap-2 flex-wrap mb-6">
+                  {["all", "beginner", "intermediate", "advanced"].map(v => (
+                    <button key={v} onClick={() => setLevelFilter(v)}
+                      className="px-3 py-1.5 rounded-full text-xs font-semibold transition-all"
+                      style={{ background: levelFilter === v ? ACCENT : "#1C1C1E", color: levelFilter === v ? "#000" : "#A1A1AA", border: `1px solid ${levelFilter === v ? ACCENT : "#27272A"}` }}>
+                      {v === "all" ? "All Levels" : v.charAt(0).toUpperCase() + v.slice(1)}
+                    </button>
+                  ))}
+                </div>
+
+                <p className="text-[#A1A1AA] text-xs uppercase tracking-wider mb-2">Type</p>
+                <div className="flex gap-2 flex-wrap mb-2">
+                  {["all", "single", "weekly", "monthly"].map(v => (
+                    <button key={v} onClick={() => setTypeFilter(v)}
+                      className="px-3 py-1.5 rounded-full text-xs font-semibold transition-all"
+                      style={{ background: typeFilter === v ? ACCENT : "#1C1C1E", color: typeFilter === v ? "#000" : "#A1A1AA", border: `1px solid ${typeFilter === v ? ACCENT : "#27272A"}` }}>
+                      {v === "all" ? "All Types" : v === "single" ? "Single" : v === "weekly" ? "7-Day Plan" : "Monthly"}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Megnövelve 90px-re */}
+              <div 
+                className="px-6 pt-4 shrink-0" 
+                style={{ 
+                  background: "#111113",
+                  borderTop: "1px solid #27272A",
+                  paddingBottom: "calc(env(safe-area-inset-bottom, 16px) + 90px)" 
+                }}
+              >
                 <button
-                  onClick={() => { setCatFilter("all"); setLevelFilter("all"); setTypeFilter("all"); setActiveQuick("all-cat"); }}
-                  className="text-xs px-3 py-1.5 rounded-full"
-                  style={{ color: ACCENT, background: `${ACCENT}15`, border: `1px solid ${ACCENT}30` }}
+                  onClick={() => setShowFilterModal(false)}
+                  className="w-full py-3.5 rounded-2xl font-semibold text-black"
+                  style={{ background: ACCENT }}
                 >
-                  Reset
+                  Apply Filters
                 </button>
               </div>
-
-              {/* Category */}
-              <p className="text-[#A1A1AA] text-xs uppercase tracking-wider mb-2">Category</p>
-              <div className="flex gap-2 flex-wrap mb-4">
-                {["all", "strength", "cardio", "stretching"].map(v => (
-                  <button key={v} onClick={() => setCatFilter(v)}
-                    className="px-3 py-1.5 rounded-full text-xs font-semibold transition-all"
-                    style={{ background: catFilter === v ? ACCENT : "#1C1C1E", color: catFilter === v ? "#000" : "#A1A1AA", border: `1px solid ${catFilter === v ? ACCENT : "#27272A"}` }}>
-                    {v === "all" ? "All" : v.charAt(0).toUpperCase() + v.slice(1)}
-                  </button>
-                ))}
-              </div>
-
-              {/* Level */}
-              <p className="text-[#A1A1AA] text-xs uppercase tracking-wider mb-2">Level</p>
-              <div className="flex gap-2 flex-wrap mb-4">
-                {["all", "beginner", "intermediate", "advanced"].map(v => (
-                  <button key={v} onClick={() => setLevelFilter(v)}
-                    className="px-3 py-1.5 rounded-full text-xs font-semibold transition-all"
-                    style={{ background: levelFilter === v ? ACCENT : "#1C1C1E", color: levelFilter === v ? "#000" : "#A1A1AA", border: `1px solid ${levelFilter === v ? ACCENT : "#27272A"}` }}>
-                    {v === "all" ? "All Levels" : v.charAt(0).toUpperCase() + v.slice(1)}
-                  </button>
-                ))}
-              </div>
-
-              {/* Type */}
-              <p className="text-[#A1A1AA] text-xs uppercase tracking-wider mb-2">Type</p>
-              <div className="flex gap-2 flex-wrap mb-5">
-                {["all", "single", "weekly", "monthly"].map(v => (
-                  <button key={v} onClick={() => setTypeFilter(v)}
-                    className="px-3 py-1.5 rounded-full text-xs font-semibold transition-all"
-                    style={{ background: typeFilter === v ? ACCENT : "#1C1C1E", color: typeFilter === v ? "#000" : "#A1A1AA", border: `1px solid ${typeFilter === v ? ACCENT : "#27272A"}` }}>
-                    {v === "all" ? "All Types" : v === "single" ? "Single" : v === "weekly" ? "7-Day Plan" : "Monthly"}
-                  </button>
-                ))}
-              </div>
-
-              <button
-                onClick={() => setShowFilterModal(false)}
-                className="w-full py-3.5 rounded-2xl font-semibold text-black"
-                style={{ background: ACCENT }}
-              >
-                Apply Filters
-              </button>
             </motion.div>
           </motion.div>
         )}
       </AnimatePresence>
 
       {/* Main content */}
-      <div className="px-6 pt-12 pb-4">
+      <div className="px-6 pt-12 pb-32"> {/* pb-24-ről pb-32-re cserélve (még nagyobb görgetési tér) */}
         <div className="mb-5">
           <p className="text-[#A1A1AA] text-sm">Discover</p>
           <h1 className="text-white text-2xl font-bold mt-0.5">Browse <span style={{ color: ACCENT }}>Workouts</span></h1>
         </div>
 
-        {/* Filter bar: Filter button + active filter chips + quick scroll categories */}
+        {/* Filter bar */}
         <div className="flex items-center gap-3 mb-4">
           <button
             onClick={() => setShowFilterModal(true)}
@@ -251,7 +282,6 @@ export function BrowsePage() {
           </button>
 
           <div className="flex gap-2 overflow-x-auto" style={{ scrollbarWidth: "none" }}>
-            {/* Active filter chips */}
             {catFilter !== "all" && (
               <button
                 key="chip-cat"
@@ -285,15 +315,11 @@ export function BrowsePage() {
                 <X size={11} strokeWidth={2.5} />
               </button>
             )}
-
-
           </div>
         </div>
 
-        {/* Results count */}
         <p className="text-[#A1A1AA] text-xs mb-3">{filtered.length} workout{filtered.length !== 1 ? "s" : ""} found</p>
 
-        {/* Workout Cards */}
         <div className="flex flex-col gap-3">
           {filtered.map((workout, i) => {
             const isSaved = savedTemplates.includes(workout.id);
@@ -389,7 +415,6 @@ function WorkoutDetailModal({ workout, onClose, onStart, onDemo }: {
       exit={{ opacity: 0 }}
       className="fixed inset-0 z-40 bg-[#09090B] flex flex-col max-w-[430px] mx-auto"
     >
-      {/* Header */}
       <div className="px-6 pt-12 pb-4 flex items-center gap-3" style={{ borderBottom: "1px solid #27272A" }}>
         <button
           onClick={onClose}
@@ -404,7 +429,6 @@ function WorkoutDetailModal({ workout, onClose, onStart, onDemo }: {
         </div>
       </div>
 
-      {/* Exercise list */}
       <div className="flex-1 overflow-y-auto px-6 py-4" style={{ scrollbarWidth: "none" }}>
         <div className="flex gap-6 mb-5 p-4 rounded-2xl" style={{ background: "#111113", border: "1px solid #27272A" }}>
           <div className="flex flex-col items-center gap-0.5">
@@ -456,8 +480,14 @@ function WorkoutDetailModal({ workout, onClose, onStart, onDemo }: {
         </div>
       </div>
 
-      {/* Start button */}
-      <div className="px-6 pb-6 pt-2" style={{ borderTop: "1px solid #27272A" }}>
+      {/* Megnövelve 90px-re */}
+      <div 
+        className="px-6 pt-4 shrink-0 bg-[#09090B]" 
+        style={{ 
+          borderTop: "1px solid #27272A",
+          paddingBottom: "calc(env(safe-area-inset-bottom, 16px) + 90px)"
+        }}
+      >
         <button
           onClick={onStart}
           className="w-full py-4 rounded-2xl font-semibold text-black text-base flex items-center justify-center gap-2"
@@ -493,13 +523,18 @@ function ExerciseDemoModal({ exercise, onClose }: { exercise: Exercise; onClose:
         style={{ background: "#111113", maxHeight: "90vh", display: "flex", flexDirection: "column", border: "1px solid #27272A" }}
         onClick={e => e.stopPropagation()}
       >
-        {/* Handle */}
         <div className="flex justify-center pt-3 pb-2 shrink-0">
           <div className="w-10 h-1 rounded-full bg-[#3F3F46]" />
         </div>
 
-        <div className="overflow-y-auto px-5 pb-8" style={{ scrollbarWidth: "none" }}>
-          {/* Title */}
+        {/* Megnövelve 90px-re */}
+        <div 
+          className="overflow-y-auto px-5" 
+          style={{ 
+            scrollbarWidth: "none",
+            paddingBottom: "calc(env(safe-area-inset-bottom, 16px) + 90px)"
+          }}
+        >
           <div className="flex items-start justify-between mb-4">
             <div className="flex-1">
               <h2 className="text-white text-xl font-bold">{exercise.name}</h2>
@@ -516,7 +551,6 @@ function ExerciseDemoModal({ exercise, onClose }: { exercise: Exercise; onClose:
             </button>
           </div>
 
-          {/* Expert tip */}
           <div className="p-4 rounded-2xl mb-4" style={{ background: "#1C1C1E", border: "1px solid #27272A" }}>
             <div className="flex items-center gap-2 mb-3">
               <div
@@ -535,7 +569,6 @@ function ExerciseDemoModal({ exercise, onClose }: { exercise: Exercise; onClose:
             </p>
           </div>
 
-          {/* Steps */}
           <div className="mb-4">
             <h3 className="text-white font-semibold text-sm mb-3 flex items-center gap-2">
               <CheckCircle2 size={14} style={{ color: ACCENT }} /> Proper Form
@@ -555,7 +588,6 @@ function ExerciseDemoModal({ exercise, onClose }: { exercise: Exercise; onClose:
             </div>
           </div>
 
-          {/* Common mistakes */}
           <div className="mb-4">
             <h3 className="text-white font-semibold text-sm mb-3 flex items-center gap-2">
               <AlertCircle size={14} style={{ color: "#EF4444" }} /> Common Mistakes
@@ -570,7 +602,6 @@ function ExerciseDemoModal({ exercise, onClose }: { exercise: Exercise; onClose:
             </div>
           </div>
 
-          {/* YouTube */}
           {exercise.youtubeId && (
             <div className="mb-2">
               {showVideo ? (
