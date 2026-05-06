@@ -233,19 +233,6 @@ function ChatTab() {
               >
                 <p className="text-sm leading-relaxed">{msg.text}</p>
               </div>
-              {msg.role === "ai" && msg.expert && (
-                <div className="flex items-center gap-1.5 mt-1.5 pl-1">
-                  <div
-                    className="w-4 h-4 rounded-full text-[8px] flex items-center justify-center font-bold"
-                    style={{ background: ACCENT, color: "#000" }}
-                  >
-                    {msg.expert.name[0]}
-                  </div>
-                  <p className="text-[10px] text-[#3F3F46]">
-                    Based on methods by <span className="text-[#A1A1AA]">{msg.expert.name}</span>, {msg.expert.title}
-                  </p>
-                </div>
-              )}
             </div>
           </div>
         ))}
@@ -640,21 +627,35 @@ function PlanGeneratorTab() {
         {/* Edit Modal */}
         <AnimatePresence>
           {showEditModal && (
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              className="fixed inset-0 z-50 flex items-end justify-center"
-              style={{ background: "rgba(0,0,0,0.85)" }}
-              onClick={() => setShowEditModal(false)}
-            >
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            // Itt a trükk: z-[9999] és fixed!
+            className="fixed inset-0 flex items-end justify-center pb-20" 
+            style={{ 
+              background: "rgba(0,0,0,0.85)", 
+              zIndex: 9999, // <--- Ez kényszeríti a legelőre
+              position: 'fixed',
+              top: 0,
+              left: 0,
+              right: 0,
+              bottom: 0
+            }}
+            onClick={() => setShowEditModal(false)}
+          >
               <motion.div
                 initial={{ y: "100%" }}
                 animate={{ y: 0 }}
                 exit={{ y: "100%" }}
                 transition={{ type: "spring", damping: 28, stiffness: 300 }}
-                className="w-full max-w-[430px] rounded-t-3xl flex flex-col"
-                style={{ background: "#111113", border: "1px solid #27272A", maxHeight: "88vh" }}
+                className="w-full max-w-[430px] rounded-3xl flex flex-col mx-4" // <--- MÓDOSÍTVA: rounded-3xl (hogy alul is kerek legyen) és mx-4
+                style={{ 
+                  background: "#111113", 
+                  border: "1px solid #27272A", 
+                  maxHeight: "80vh", // <--- Kicsit vegyél vissza a magasságból, hogy ne lógjon ki felül
+                  marginBottom: "20px" // <--- Ez ad egy kis extra biztonsági távolságot alul
+                }}
                 onClick={e => e.stopPropagation()}
               >
                 {/* Handle */}
