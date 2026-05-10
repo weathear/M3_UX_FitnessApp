@@ -5,6 +5,7 @@ import {
   X, Youtube, CheckCircle2, AlertCircle, ArrowLeft,
   Plus, Check, SlidersHorizontal, ChevronLeft, ChevronRight
 } from "lucide-react";
+import { toast } from "sonner";
 import { useApp } from "../context/AppContext";
 import { workouts, exercises, dayNames, fullDayNames, Exercise, Workout } from "../data/mockData";
 import { ActiveWorkoutView } from "../components/workout/ActiveWorkoutView";
@@ -117,6 +118,7 @@ export function BrowsePage() {
       selectedModalDays.forEach(dayIdx => {
         addToSchedule(scheduleModal, dayIdx);
       });
+      toast.success("Workout scheduled successfully!");
     }
     closeScheduleModal();
   };

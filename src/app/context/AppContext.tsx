@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from "react";
+import { toast } from "sonner";
 import { workouts as allWorkouts } from "../data/mockData";
 
 export interface UserProfile {
@@ -164,6 +165,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       if (prev.includes(workoutId)) return prev;
       const updated = [...prev, workoutId];
       localStorage.setItem("fitai_templates", JSON.stringify(updated));
+      toast.success("Workout saved to generic templates!");
       return updated;
     });
   };

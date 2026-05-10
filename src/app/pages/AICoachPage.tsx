@@ -5,6 +5,7 @@ import {
   Dumbbell, Play, Bookmark, Calendar, Flame, Clock,
   Pencil, Trash2, Plus, X
 } from "lucide-react";
+import { toast } from "sonner";
 import { useApp } from "../context/AppContext";
 import { fullDayNames, dayNames } from "../data/mockData";
 import { getAIResponseStreaming, generateWorkoutPlan, refineWorkoutPlan, expertAttribution, getRandomExpert, type WorkoutPlan } from "../utils/gemini";
@@ -1062,6 +1063,7 @@ function PlanGeneratorTab() {
                       addToSchedule("w1", scheduleDay);
                       setShowSchedule(false);
                       setScheduleDay(null);
+                      toast.success(`Workout scheduled for ${lbl}!`);
                     }}
                     className="w-full py-2.5 rounded-xl text-sm font-semibold text-black"
                     style={{ background: ACCENT }}

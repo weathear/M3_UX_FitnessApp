@@ -4,6 +4,7 @@ import {
   Flame, Clock, CheckSquare, Calendar, Check,
   Trash2, Plus, Bookmark, Play, ChevronLeft, ChevronRight,
 } from "lucide-react";
+import { toast } from "sonner";
 import { useApp } from "../context/AppContext";
 import { workouts, dayNames, Workout } from "../data/mockData";
 import { useNavigate } from "react-router";
@@ -294,7 +295,7 @@ export function CalendarPage() {
                     </div>
                     <div className="flex gap-1.5">
                       <button onClick={() => setActiveWorkout(workout)} className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ background: ACCENT }}><Play size={12} fill="#000" strokeWidth={0} /></button>
-                      <button onClick={() => addToSchedule(workout.id, selectedDay)} className="w-8 h-8 rounded-lg flex items-center justify-center border border-border transition-colors"><Plus size={14} style={{ color: ACCENT }} /></button>
+                      <button onClick={() => { addToSchedule(workout.id, selectedDay); toast.success("Workout scheduled locally!"); }} className="w-8 h-8 rounded-lg flex items-center justify-center border border-border transition-colors"><Plus size={14} style={{ color: ACCENT }} /></button>
                       <button onClick={() => openScheduleModal(workout.id)} className="px-2.5 h-8 rounded-lg text-[11px] font-semibold flex items-center gap-1 text-muted-foreground border border-border transition-colors"><Calendar size={11} /> Schedule</button>
                     </div>
                   </div>
@@ -314,7 +315,7 @@ export function CalendarPage() {
                   </div>
                   <div className="flex gap-1.5">
                     <button onClick={() => setActiveWorkout(workout)} className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ background: ACCENT }}><Play size={12} fill="#000" strokeWidth={0} /></button>
-                    <button onClick={() => addToSchedule(workout.id, selectedDay)} className="w-8 h-8 rounded-lg flex items-center justify-center border border-border"><Plus size={14} style={{ color: ACCENT }} /></button>
+                    <button onClick={() => { addToSchedule(workout.id, selectedDay); toast.success("Workout scheduled locally!"); }} className="w-8 h-8 rounded-lg flex items-center justify-center border border-border"><Plus size={14} style={{ color: ACCENT }} /></button>
                     <button onClick={() => openScheduleModal(workout.id)} className="px-2.5 h-8 rounded-lg text-[11px] font-semibold flex items-center gap-1 text-muted-foreground border border-border"><Calendar size={11} /> Schedule</button>
                   </div>
                 </div>
