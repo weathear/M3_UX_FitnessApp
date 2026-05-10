@@ -28,6 +28,16 @@ function getDayName() {
   return days[getTodayIndex()];
 }
 
+// Segédfüggvény az aktuális hét hétfőjének lekéréséhez
+function getStartOfWeek() {
+  const now = new Date();
+  const day = now.getDay();
+  const diff = now.getDate() - (day === 0 ? 6 : day - 1); // Hétfőre korrigálunk
+  const monday = new Date(now.setDate(diff));
+  monday.setHours(0, 0, 0, 0);
+  return monday;
+}
+
 const categoryColor = (cat: string) => {
   if (cat === "strength") return "#FF6B35";
   if (cat === "cardio") return "#FF3B6B";
@@ -56,12 +66,14 @@ export function HomePage() {
     ? workouts.find(w => w.id === todaySchedule[0].workoutId)
     : null;
 
-  // Weekly stats
+  // ─── AKTUÁLIS HETI STATISZTIKÁK SZÁMÍTÁSA ───
+  const startOfWeek = getStartOfWeek();
   const now = new Date();
-  const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+  
+  // Csak azokat a sessionöket vesszük, amik ezen a héten (hétfőtől kezdve) történtek
   const weekSessions = completedSessions.filter(s => {
-    const d = new Date(s.date);
-    return d >= weekAgo && d <= now;
+    const sessionDate = new Date(s.date);
+    return sessionDate >= startOfWeek && sessionDate <= now;
   });
 
   const weekCalories = weekSessions.reduce((a, s) => a + s.calories, 0);
@@ -80,24 +92,20 @@ export function HomePage() {
 
   return (
     <>
-      {/* Active Workout Overlay */}
       <AnimatePresence>
         {activeWorkout && (
           <ActiveWorkoutView workout={activeWorkout} onClose={() => setActiveWorkout(null)} />
         )}
       </AnimatePresence>
 
-      {/* Scrollable viewport dashboard */}
       <div
-        className="bg-[#09090B] flex flex-col px-6 overflow-y-auto overflow-x-hidden"
+        className="bg-background transition-colors duration-300 flex flex-col px-6 overflow-y-auto overflow-x-hidden"
         style={{
           height: "100%",
           paddingTop: "max(40px, env(safe-area-inset-top, 40px))",
           paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 54px)",
-          /* AZ OVERFLOW: HIDDEN TÖRÖLVE LETT INNEN, ÉS BEKERÜLT A CLASSNAME-BE AZ overflow-y-auto */
         }}
       >
-        {/* ── HEADER ROW ── greeting + date on one line */}
         <motion.div
           initial={{ opacity: 0, y: -12 }}
           animate={{ opacity: 1, y: 0 }}
@@ -105,10 +113,10 @@ export function HomePage() {
           className="flex items-center justify-between shrink-0 mb-3"
         >
           <div>
-            <h1 className="text-white text-xl font-bold leading-tight">
+            <h1 className="text-foreground text-xl font-bold leading-tight">
               {getGreeting()},{" "}
               <span style={{ color: ACCENT }}>{displayName}</span>
-              <span className="text-[#52525B]" style={{ fontSize: "0.7rem", fontWeight: 400 }}>
+              <span className="text-muted-foreground/70" style={{ fontSize: "0.7rem", fontWeight: 400 }}>
                 {" "}·{" "}{getDayName().slice(0, 3)},{" "}
                 {new Date().toLocaleDateString("en-US", { month: "short", day: "numeric" })}
               </span>
@@ -123,22 +131,16 @@ export function HomePage() {
           </motion.div>
         </motion.div>
 
-        {/* ── DAILY MOTIVATION ── expanded */}
         <motion.div
           initial={{ opacity: 0, y: 12 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.08, duration: 0.4 }}
-          className="shrink-0 rounded-2xl relative overflow-hidden mb-9"
-          style={{ background: "#111113", border: "1px solid #27272A" }}
+          className="shrink-0 rounded-2xl relative overflow-hidden mb-9 bg-card border border-border transition-colors duration-300"
         >
-          {/* Left accent bar */}
-          <div
-            className="absolute top-0 left-0 w-[3px] h-full"
-            style={{ background: ACCENT }}
-          />
+          <div className="absolute top-0 left-0 w-[3px] h-full" style={{ background: ACCENT }} />
           <div className="pl-4 pr-4 py-4">
-            <p className="text-[#A1A1AA] text-[9px] uppercase tracking-widest mb-2">Daily Motivation</p>
-            <p className="text-[#E4E4E7] text-sm italic leading-relaxed line-clamp-3">
+            <p className="text-muted-foreground text-[9px] uppercase tracking-widest mb-2">Daily Motivation</p>
+            <p className="text-foreground/90 text-sm italic leading-relaxed line-clamp-3">
               "{quote.text}"
             </p>
             <div className="flex items-center gap-2 mt-3">
@@ -148,15 +150,14 @@ export function HomePage() {
               >
                 {quote.author[0]}
               </div>
-              <p className="text-[#A1A1AA] text-[11px]">
-                <span className="text-white font-semibold">{quote.author}</span>
+              <p className="text-muted-foreground text-[11px]">
+                <span className="text-foreground font-semibold">{quote.author}</span>
                 {" "}· {quote.title}
               </p>
             </div>
           </div>
         </motion.div>
 
-        {/* ── STATS SECTION ── 2×2 grid */}
         <motion.div
           initial={{ opacity: 0, y: 12 }}
           animate={{ opacity: 1, y: 0 }}
@@ -164,10 +165,10 @@ export function HomePage() {
           className="shrink-0 mb-9"
         >
           <div className="flex items-center justify-between mb-2">
-            <p className="text-[#A1A1AA] text-xs font-semibold">This Week</p>
-            <div className="flex items-center gap-1">
-              <BarChart2 size={10} style={{ color: "#A1A1AA" }} />
-              <p className="text-[#A1A1AA] text-[10px]">Last 7 days</p>
+            <p className="text-muted-foreground text-xs font-semibold">This Week</p>
+            <div className="flex items-center gap-1 text-muted-foreground">
+              <BarChart2 size={10} />
+              <p className="text-[10px]">Mon – Sun</p>
             </div>
           </div>
           <div className="grid grid-cols-2 gap-2">
@@ -177,29 +178,26 @@ export function HomePage() {
                 initial={{ opacity: 0, scale: 0.9 }}
                 animate={{ opacity: 1, scale: 1 }}
                 transition={{ delay: 0.18 + i * 0.04, duration: 0.35 }}
-                className="rounded-2xl flex items-center gap-3 px-4 py-3"
-                style={{ background: "#111113", border: "1px solid #27272A" }}
+                className="rounded-2xl flex items-center gap-3 px-4 py-3 bg-card border border-border transition-colors duration-300"
               >
                 <card.icon size={16} style={{ color: card.color }} />
                 <div>
                   <div className="flex items-baseline gap-1">
-                    <p className="text-white font-bold" style={{ fontSize: "1.25rem" }}>{card.value}</p>
+                    <p className="text-foreground font-bold" style={{ fontSize: "1.25rem" }}>{card.value}</p>
                     <p className="text-[10px]" style={{ color: card.color, opacity: 0.7 }}>{card.unit}</p>
                   </div>
-                  <p className="text-[#A1A1AA] text-[10px]">{card.label}</p>
+                  <p className="text-muted-foreground text-[10px]">{card.label}</p>
                 </div>
               </motion.div>
             ))}
           </div>
         </motion.div>
 
-        {/* ── TODAY'S WORKOUT ── shrinks to content */}
         <motion.div
           initial={{ opacity: 0, y: 16 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.22, duration: 0.45 }}
-          className="shrink-0 rounded-2xl overflow-hidden mb-6" // Kicsi margin alulra a biztonság kedvéért (mb-6)
-          style={{ background: "#111113", border: "1px solid #27272A" }}
+          className="shrink-0 rounded-2xl overflow-hidden mb-6 bg-card border border-border transition-colors duration-300"
         >
           {todayWorkout ? (
             <WorkoutCard
@@ -215,60 +213,39 @@ export function HomePage() {
   );
 }
 
-// ── Today's Workout Card (filled) ──────────────────────────────────────────
-
+// ── WorkoutCard és RestDayCard komponensek változatlanok maradnak...
 function WorkoutCard({ workout, onStart }: { workout: Workout; onStart: () => void }) {
   const catColor = categoryColor(workout.category);
-
   return (
     <div className="flex flex-col px-5 pt-4 pb-5">
-      {/* Section label */}
       <div className="flex items-center justify-between mb-2 shrink-0">
-        <p className="text-[#A1A1AA] text-xs font-semibold tracking-wide">Today's Workout</p>
+        <p className="text-muted-foreground text-xs font-semibold tracking-wide">Today's Workout</p>
         <Award size={14} style={{ color: ACCENT }} />
       </div>
-
-      {/* Category + title */}
       <div className="shrink-0 mb-2">
-        <span
-          className="text-[10px] font-bold px-2.5 py-1 rounded-full"
-          style={{ background: `${catColor}18`, color: catColor }}
-        >
+        <span className="text-[10px] font-bold px-2.5 py-1 rounded-full" style={{ background: `${catColor}18`, color: catColor }}>
           {categoryLabel(workout.category).toUpperCase()}
         </span>
-        <h2
-          className="text-white font-bold mt-1.5 leading-tight"
-          style={{ fontSize: "clamp(1rem, 4vw, 1.15rem)" }}
-        >
+        <h2 className="text-foreground font-bold mt-1.5 leading-tight" style={{ fontSize: "clamp(1rem, 4vw, 1.15rem)" }}>
           {workout.name}
         </h2>
       </div>
-
-      {/* Stats pills row */}
       <div className="flex gap-2 shrink-0 mb-2">
         {[
           { icon: Clock, value: workout.duration, unit: "min", color: "#3B82F6" },
           { icon: Flame, value: workout.calories, unit: "kcal", color: "#FF6B35" },
           { icon: Dumbbell, value: workout.exerciseCount, unit: "exercises", color: "#A855F7" },
         ].map(({ icon: Icon, value, unit, color }) => (
-          <div
-            key={unit}
-            className="flex items-center gap-1.5 px-2.5 py-1 rounded-xl"
-            style={{ background: "#1C1C1E", border: "1px solid #27272A" }}
-          >
+          <div key={unit} className="flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-muted border border-border">
             <Icon size={11} style={{ color }} strokeWidth={1.5} />
-            <span className="text-white text-xs font-semibold">{value}</span>
-            <span className="text-[#A1A1AA] text-[10px]">{unit}</span>
+            <span className="text-foreground text-xs font-semibold">{value}</span>
+            <span className="text-muted-foreground text-[10px]">{unit}</span>
           </div>
         ))}
       </div>
-
-      {/* Description — 2 lines max */}
-      <p className="text-[#71717A] text-xs leading-relaxed line-clamp-2 shrink-0 mb-4">
+      <p className="text-muted-foreground text-xs leading-relaxed line-clamp-2 shrink-0 mb-4">
         {workout.description}
       </p>
-
-      {/* Primary CTA */}
       <motion.button
         whileTap={{ scale: 0.98 }}
         onClick={onStart}
@@ -282,41 +259,28 @@ function WorkoutCard({ workout, onStart }: { workout: Workout; onStart: () => vo
   );
 }
 
-// ── Rest Day Card ──────────────────────────────────────────────────────────
-
 function RestDayCard({ onBrowse }: { onBrowse: () => void }) {
   return (
     <div className="flex flex-col h-full px-5 pt-4 pb-5">
-      {/* Section label */}
       <div className="flex items-center justify-between shrink-0">
-        <p className="text-[#A1A1AA] text-xs font-semibold tracking-wide">Today's Workout</p>
+        <p className="text-muted-foreground text-xs font-semibold tracking-wide">Today's Workout</p>
       </div>
-
-      {/* Center content */}
       <div className="flex flex-col items-center justify-center flex-1 gap-4 text-center">
-        <div
-          className="w-20 h-20 rounded-3xl flex items-center justify-center"
-          style={{ background: `${ACCENT}12`, border: `1px solid ${ACCENT}25` }}
-        >
-          <motion.div
-            animate={{ scale: [1, 1.06, 1] }}
-            transition={{ duration: 3, repeat: Infinity, ease: "easeInOut" }}
-          >
+        <div className="w-20 h-20 rounded-3xl flex items-center justify-center" style={{ background: `${ACCENT}12`, border: `1px solid ${ACCENT}25` }}>
+          <motion.div animate={{ scale: [1, 1.06, 1] }} transition={{ duration: 3, repeat: Infinity, ease: "easeInOut" }}>
             <Zap size={36} style={{ color: ACCENT }} />
           </motion.div>
         </div>
-
         <div>
-          <p className="text-white font-bold text-lg">Rest Day</p>
-          <p className="text-[#71717A] text-sm mt-1 leading-relaxed">
+          <p className="text-foreground font-bold text-lg">Rest Day</p>
+          <p className="text-muted-foreground text-sm mt-1 leading-relaxed">
             Recovery is part of the process. Your muscles grow when you rest.
           </p>
         </div>
-
         <motion.button
           whileTap={{ scale: 0.97 }}
           onClick={onBrowse}
-          className="w-full rounded-2xl flex items-center justify-center gap-2 font-bold text-black"
+          className="w-full rounded-2xl flex items-center justify-center gap-2 font-bold text-black mt-2"
           style={{ background: ACCENT, height: 56 }}
         >
           Browse Workouts <ChevronRight size={18} />

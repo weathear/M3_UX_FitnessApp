@@ -26,10 +26,11 @@ type GeneratedPlan = WorkoutPlan;
 // ─── Main Component ──────────────────────────────────────────────────────────
 
 export function AICoachPage() {
-  const [activeTab, setActiveTab] = useState<"chat" | "plan">("chat");
+  // MÓDOSÍTÁS: Az alapértelmezett fül most már a 'plan'
+  const [activeTab, setActiveTab] = useState<"chat" | "plan">("plan");
 
   return (
-    <div className="bg-[#09090B] flex flex-col" style={{ height: "100%", minHeight: 0 }}>
+    <div className="bg-background transition-colors duration-300 flex flex-col" style={{ height: "100%", minHeight: 0 }}>
       {/* Compact Header */}
       <div className="px-6 pt-8 pb-0">
         <div className="flex items-center gap-2.5 mb-4">
@@ -40,49 +41,38 @@ export function AICoachPage() {
             <Bot size={16} style={{ color: ACCENT }} />
           </div>
           <div>
-            <h1 className="text-white text-base font-bold leading-tight">AI <span style={{ color: ACCENT }}>Coach</span></h1>
-            <p className="text-[#A1A1AA] text-[10px]">Expert-backed guidance</p>
+            <h1 className="text-foreground text-base font-bold leading-tight">AI <span style={{ color: ACCENT }}>Coach</span></h1>
+            <p className="text-muted-foreground text-[10px]">Expert-backed guidance</p>
           </div>
         </div>
 
-        {/* Compact Tabs */}
-        <div className="flex gap-1.5 mb-0 p-1 rounded-xl" style={{ background: "#111113", border: "1px solid #27272A" }}>
-          <button
-            onClick={() => setActiveTab("chat")}
-            className="flex-1 py-2 rounded-lg text-xs font-semibold transition-all"
-            style={{
-              background: activeTab === "chat" ? ACCENT : "transparent",
-              color: activeTab === "chat" ? "#000" : "#A1A1AA",
-            }}
-          >
-            💬 Chat
-          </button>
+        {/* Compact Tabs - MÓDOSÍTÁS: Gombok felcserélve */}
+        <div className="flex gap-1.5 mb-0 p-1 rounded-xl bg-muted border border-border">
           <button
             onClick={() => setActiveTab("plan")}
             className="flex-1 py-2 rounded-lg text-xs font-semibold transition-all"
             style={{
               background: activeTab === "plan" ? ACCENT : "transparent",
-              color: activeTab === "plan" ? "#000" : "#A1A1AA",
+              color: activeTab === "plan" ? "#000" : "var(--muted-foreground)",
             }}
           >
             ⚡ Plan Generator
+          </button>
+          <button
+            onClick={() => setActiveTab("chat")}
+            className="flex-1 py-2 rounded-lg text-xs font-semibold transition-all"
+            style={{
+              background: activeTab === "chat" ? ACCENT : "transparent",
+              color: activeTab === "chat" ? "#000" : "var(--muted-foreground)",
+            }}
+          >
+            💬 Chat
           </button>
         </div>
       </div>
 
       <AnimatePresence mode="wait">
-        {activeTab === "chat" ? (
-          <motion.div
-            key="chat"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="flex-1 flex flex-col"
-            style={{ minHeight: 0 }}
-          >
-            <ChatTab />
-          </motion.div>
-        ) : (
+        {activeTab === "plan" ? (
           <motion.div
             key="plan"
             initial={{ opacity: 0 }}
@@ -92,6 +82,17 @@ export function AICoachPage() {
             style={{ minHeight: 0 }}
           >
             <PlanGeneratorTab />
+          </motion.div>
+        ) : (
+          <motion.div
+            key="chat"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="flex-1 flex flex-col"
+            style={{ minHeight: 0 }}
+          >
+            <ChatTab />
           </motion.div>
         )}
       </AnimatePresence>
@@ -138,7 +139,6 @@ function ChatTab() {
     const aiMsgId = (Date.now() + 1).toString();
     const expert = getRandomExpert();
     
-    // Üres AI message hozzáadása
     setMessages(prev => [...prev, {
       id: aiMsgId,
       role: "ai",
@@ -148,7 +148,6 @@ function ChatTab() {
     }]);
 
     try {
-      // Streaming az API-ból
       for await (const chunk of getAIResponseStreaming(text)) {
         setMessages(prev => {
           const updated = [...prev];
@@ -168,7 +167,6 @@ function ChatTab() {
         error instanceof Error && error.message.includes("Invalid Gemini API key")
           ? "Gemini API key invalid. Please generate a new key in Google AI Studio and update .env.local."
           : "Sorry, I encountered an issue. Please try again or check your API key in .env.local";
-      // Fallback üzenet
       setMessages(prev => {
         const updated = [...prev];
         const msgIdx = updated.findIndex(m => m.id === aiMsgId);
@@ -189,17 +187,15 @@ function ChatTab() {
     <>
       {/* Messages */}
       <div className="flex-1 overflow-y-auto px-6 py-3" style={{ scrollbarWidth: "none", minHeight: 0 }}>
-        {/* Suggested questions */}
         {messages.length === 1 && (
           <div className="mb-4">
-            <p className="text-[#A1A1AA] text-[10px] mb-2 uppercase tracking-widest">Quick questions</p>
+            <p className="text-muted-foreground text-[10px] mb-2 uppercase tracking-widest">Quick questions</p>
             <div className="flex flex-wrap gap-2">
               {suggestedQuestions.map(q => (
                 <button
                   key={q}
                   onClick={() => sendMessage(q)}
-                  className="px-3 py-1.5 rounded-full text-xs transition-all"
-                  style={{ background: "#1C1C1E", border: "1px solid #27272A", color: "#A1A1AA" }}
+                  className="px-3 py-1.5 rounded-full text-xs transition-all bg-muted border border-border text-muted-foreground hover:bg-muted/80"
                 >
                   {q}
                 </button>
@@ -225,10 +221,10 @@ function ChatTab() {
               <div
                 className="p-3.5 rounded-2xl"
                 style={{
-                  background: msg.role === "user" ? ACCENT : "#1C1C1E",
-                  color: msg.role === "user" ? "#000" : "#fff",
+                  background: msg.role === "user" ? ACCENT : "var(--card)",
+                  color: msg.role === "user" ? "#000" : "var(--foreground)",
                   borderRadius: msg.role === "user" ? "18px 18px 4px 18px" : "18px 18px 18px 4px",
-                  border: msg.role === "ai" ? "1px solid #27272A" : "none",
+                  border: msg.role === "ai" ? "1px solid var(--border)" : "none",
                 }}
               >
                 <p className="text-sm leading-relaxed">{msg.text}</p>
@@ -245,7 +241,7 @@ function ChatTab() {
             >
               <Bot size={12} style={{ color: ACCENT }} />
             </div>
-            <div className="p-3.5 rounded-2xl" style={{ background: "#1C1C1E", borderRadius: "18px 18px 18px 4px", border: "1px solid #27272A" }}>
+            <div className="p-3.5 rounded-2xl bg-card border border-border" style={{ borderRadius: "18px 18px 18px 4px" }}>
               <div className="flex gap-1 items-center">
                 {[0, 1, 2].map(i => (
                   <motion.div
@@ -264,29 +260,25 @@ function ChatTab() {
       </div>
 
       {/* Input */}
-      <div className="px-6 pb-4 pt-2" style={{ borderTop: "1px solid #1C1C1E" }}>
+      <div className="px-6 pb-4 pt-2 border-t border-border bg-background">
         <div className="flex gap-2">
           <input
             value={input}
             onChange={e => setInput(e.target.value)}
             onKeyDown={e => e.key === "Enter" && sendMessage(input)}
             placeholder="Ask about training, nutrition..."
-            className="flex-1 rounded-xl px-4 py-3 text-white text-sm outline-none transition-colors placeholder:text-[#3F3F46]"
-            style={{
-              background: "#1E1E1E",
-              border: `1px solid ${input ? "#3F3F46" : "#27272A"}`,
-            }}
+            className="flex-1 rounded-xl px-4 py-3 text-foreground text-sm outline-none transition-colors placeholder:text-muted-foreground bg-muted border border-border"
           />
           <button
             onClick={() => sendMessage(input)}
             disabled={!input.trim() || loading}
             className="w-11 h-11 rounded-xl flex items-center justify-center transition-all shrink-0"
             style={{
-              background: input.trim() ? ACCENT : "#1C1C1E",
-              border: `1px solid ${input.trim() ? ACCENT : "#27272A"}`,
+              background: input.trim() ? ACCENT : "var(--muted)",
+              border: `1px solid ${input.trim() ? ACCENT : "var(--border)"}`,
             }}
           >
-            <Send size={15} style={{ color: input.trim() ? "#000" : "#71717A" }} />
+            <Send size={15} style={{ color: input.trim() ? "#000" : "var(--muted-foreground)" }} />
           </button>
         </div>
       </div>
@@ -631,11 +623,10 @@ function PlanGeneratorTab() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            // Itt a trükk: z-[9999] és fixed!
             className="fixed inset-0 flex items-end justify-center pb-20" 
             style={{ 
               background: "rgba(0,0,0,0.85)", 
-              zIndex: 9999, // <--- Ez kényszeríti a legelőre
+              zIndex: 9999,
               position: 'fixed',
               top: 0,
               left: 0,
@@ -649,25 +640,23 @@ function PlanGeneratorTab() {
                 animate={{ y: 0 }}
                 exit={{ y: "100%" }}
                 transition={{ type: "spring", damping: 28, stiffness: 300 }}
-                className="w-full max-w-[430px] rounded-3xl flex flex-col mx-4" // <--- MÓDOSÍTVA: rounded-3xl (hogy alul is kerek legyen) és mx-4
+                className="w-full max-w-[430px] rounded-3xl flex flex-col mx-4 bg-card border border-border"
                 style={{ 
-                  background: "#111113", 
-                  border: "1px solid #27272A", 
-                  maxHeight: "80vh", // <--- Kicsit vegyél vissza a magasságból, hogy ne lógjon ki felül
-                  marginBottom: "20px" // <--- Ez ad egy kis extra biztonsági távolságot alul
+                  maxHeight: "80vh",
+                  marginBottom: "20px"
                 }}
                 onClick={e => e.stopPropagation()}
               >
                 {/* Handle */}
                 <div className="flex justify-center pt-3 pb-1 shrink-0">
-                  <div className="w-10 h-1 rounded-full bg-[#3F3F46]" />
+                  <div className="w-10 h-1 rounded-full bg-muted-foreground/30" />
                 </div>
 
                 {/* Header */}
-                <div className="flex items-center justify-between px-5 py-3 shrink-0" style={{ borderBottom: "1px solid #27272A" }}>
-                  <h3 className="text-white font-bold text-base">Edit Workout</h3>
+                <div className="flex items-center justify-between px-5 py-3 shrink-0 border-b border-border">
+                  <h3 className="text-foreground font-bold text-base">Edit Workout</h3>
                   <button onClick={() => setShowEditModal(false)} className="p-1.5">
-                    <X size={18} style={{ color: "#A1A1AA" }} />
+                    <X size={18} className="text-muted-foreground" />
                   </button>
                 </div>
 
@@ -675,7 +664,7 @@ function PlanGeneratorTab() {
                 <div className="flex-1 overflow-y-auto px-5 py-4" style={{ scrollbarWidth: "none" }}>
                   <div className="flex flex-col gap-3">
                     {editedExercises.map((ex, i) => (
-                      <div key={i} className="p-3.5 rounded-2xl" style={{ background: "#1C1C1E", border: "1px solid #27272A" }}>
+                      <div key={i} className="p-3.5 rounded-2xl bg-muted border border-border">
                         <div className="flex items-center gap-2 mb-2.5">
                           <div
                             className="w-6 h-6 rounded-md flex items-center justify-center text-[11px] font-bold text-black shrink-0"
@@ -686,7 +675,7 @@ function PlanGeneratorTab() {
                           <input
                             value={ex.name}
                             onChange={e => updateEx(i, "name", e.target.value)}
-                            className="flex-1 bg-transparent text-white text-sm font-semibold outline-none border-b border-[#3F3F46] pb-0.5 focus:border-[#CCFF00] transition-colors"
+                            className="flex-1 bg-transparent text-foreground text-sm font-semibold outline-none border-b border-border pb-0.5 focus:border-[var(--accent)] transition-colors"
                             placeholder="Exercise name"
                           />
                           <button onClick={() => deleteEx(i)} className="p-1 shrink-0">
@@ -695,37 +684,34 @@ function PlanGeneratorTab() {
                         </div>
                         <div className="flex gap-2">
                           <div className="flex-1 flex flex-col gap-1">
-                            <span className="text-[10px] text-[#A1A1AA] uppercase tracking-wider">Sets</span>
+                            <span className="text-[10px] text-muted-foreground uppercase tracking-wider">Sets</span>
                             <input
                               type="number"
                               value={ex.sets ?? ""}
                               onChange={e => updateEx(i, "sets", e.target.value)}
-                              className="w-full px-2.5 py-1.5 rounded-lg text-white text-xs text-center outline-none"
-                              style={{ background: "#09090B", border: "1px solid #3F3F46" }}
+                              className="w-full px-2.5 py-1.5 rounded-lg text-foreground text-xs text-center outline-none bg-background border border-border"
                               min={1}
                             />
                           </div>
                           {ex.durationSec !== undefined ? (
                             <div className="flex-1 flex flex-col gap-1">
-                              <span className="text-[10px] text-[#A1A1AA] uppercase tracking-wider">Duration (s)</span>
+                              <span className="text-[10px] text-muted-foreground uppercase tracking-wider">Duration (s)</span>
                               <input
                                 type="number"
                                 value={ex.durationSec ?? ""}
                                 onChange={e => updateEx(i, "durationSec", e.target.value)}
-                                className="w-full px-2.5 py-1.5 rounded-lg text-white text-xs text-center outline-none"
-                                style={{ background: "#09090B", border: "1px solid #3F3F46" }}
+                                className="w-full px-2.5 py-1.5 rounded-lg text-foreground text-xs text-center outline-none bg-background border border-border"
                                 min={1}
                               />
                             </div>
                           ) : (
                             <div className="flex-1 flex flex-col gap-1">
-                              <span className="text-[10px] text-[#A1A1AA] uppercase tracking-wider">Reps</span>
+                              <span className="text-[10px] text-muted-foreground uppercase tracking-wider">Reps</span>
                               <input
                                 type="number"
                                 value={ex.reps ?? ""}
                                 onChange={e => updateEx(i, "reps", e.target.value)}
-                                className="w-full px-2.5 py-1.5 rounded-lg text-white text-xs text-center outline-none"
-                                style={{ background: "#09090B", border: "1px solid #3F3F46" }}
+                                className="w-full px-2.5 py-1.5 rounded-lg text-foreground text-xs text-center outline-none bg-background border border-border"
                                 min={1}
                               />
                             </div>
@@ -750,29 +736,26 @@ function PlanGeneratorTab() {
                             value={newExName}
                             onChange={e => setNewExName(e.target.value)}
                             placeholder="Exercise name"
-                            className="w-full px-3 py-2 rounded-xl text-white text-sm outline-none mb-2 placeholder:text-[#3F3F46]"
-                            style={{ background: "#09090B", border: "1px solid #3F3F46" }}
+                            className="w-full px-3 py-2 rounded-xl text-foreground text-sm outline-none mb-2 placeholder:text-muted-foreground bg-background border border-border"
                           />
                           <div className="flex gap-2 mb-2.5">
                             <div className="flex-1 flex flex-col gap-1">
-                              <span className="text-[10px] text-[#A1A1AA] uppercase tracking-wider">Sets</span>
+                              <span className="text-[10px] text-muted-foreground uppercase tracking-wider">Sets</span>
                               <input
                                 type="number"
                                 value={newExSets}
                                 onChange={e => setNewExSets(e.target.value)}
-                                className="w-full px-2.5 py-1.5 rounded-lg text-white text-xs text-center outline-none"
-                                style={{ background: "#09090B", border: "1px solid #3F3F46" }}
+                                className="w-full px-2.5 py-1.5 rounded-lg text-foreground text-xs text-center outline-none bg-background border border-border"
                                 min={1}
                               />
                             </div>
                             <div className="flex-1 flex flex-col gap-1">
-                              <span className="text-[10px] text-[#A1A1AA] uppercase tracking-wider">Reps</span>
+                              <span className="text-[10px] text-muted-foreground uppercase tracking-wider">Reps</span>
                               <input
                                 type="number"
                                 value={newExReps}
                                 onChange={e => setNewExReps(e.target.value)}
-                                className="w-full px-2.5 py-1.5 rounded-lg text-white text-xs text-center outline-none"
-                                style={{ background: "#09090B", border: "1px solid #3F3F46" }}
+                                className="w-full px-2.5 py-1.5 rounded-lg text-foreground text-xs text-center outline-none bg-background border border-border"
                                 min={1}
                               />
                             </div>
@@ -780,8 +763,7 @@ function PlanGeneratorTab() {
                           <div className="flex gap-2">
                             <button
                               onClick={() => setShowAddForm(false)}
-                              className="flex-1 py-2 rounded-xl text-xs font-semibold"
-                              style={{ background: "transparent", color: "#A1A1AA", border: "1px solid #27272A" }}
+                              className="flex-1 py-2 rounded-xl text-xs font-semibold bg-transparent text-muted-foreground border border-border hover:bg-muted"
                             >
                               Cancel
                             </button>
@@ -789,7 +771,7 @@ function PlanGeneratorTab() {
                               onClick={addEx}
                               disabled={!newExName.trim()}
                               className="flex-1 py-2 rounded-xl text-xs font-semibold text-black"
-                              style={{ background: newExName.trim() ? ACCENT : "#3F3F46" }}
+                              style={{ background: newExName.trim() ? ACCENT : "var(--muted)" }}
                             >
                               Add
                             </button>
@@ -802,8 +784,7 @@ function PlanGeneratorTab() {
                   {!showAddForm && (
                     <button
                       onClick={() => setShowAddForm(true)}
-                      className="w-full mt-3 py-2.5 rounded-xl text-xs font-semibold flex items-center justify-center gap-1.5 transition-all"
-                      style={{ background: "transparent", color: "#A1A1AA", border: "1px dashed #3F3F46" }}
+                      className="w-full mt-3 py-2.5 rounded-xl text-xs font-semibold flex items-center justify-center gap-1.5 transition-all bg-transparent text-muted-foreground border border-dashed border-border hover:bg-muted"
                     >
                       <Plus size={13} /> Add Exercise
                     </button>
@@ -811,7 +792,7 @@ function PlanGeneratorTab() {
                 </div>
 
                 {/* Save button */}
-                <div className="px-5 py-4 shrink-0" style={{ borderTop: "1px solid #27272A" }}>
+                <div className="px-5 py-4 shrink-0 border-t border-border bg-card rounded-b-3xl">
                   <button
                     onClick={saveEdits}
                     className="w-full py-3.5 rounded-2xl font-semibold text-black flex items-center justify-center gap-2"
@@ -827,11 +808,11 @@ function PlanGeneratorTab() {
 
         <div className="flex items-center justify-between mb-4">
           <div>
-            <h3 className="text-white font-bold text-lg">Your Plan is Ready!</h3>
-            <p className="text-[#A1A1AA] text-xs">AI-generated & expert-backed</p>
+            <h3 className="text-foreground font-bold text-lg">Your Plan is Ready!</h3>
+            <p className="text-muted-foreground text-xs">AI-generated & expert-backed</p>
           </div>
-          <button onClick={reset} className="p-2 rounded-xl" style={{ background: "#1C1C1E", border: "1px solid #27272A" }}>
-            <RotateCcw size={14} style={{ color: "#A1A1AA" }} />
+          <button onClick={reset} className="p-2 rounded-xl bg-card border border-border">
+            <RotateCcw size={14} className="text-muted-foreground" />
           </button>
         </div>
 
@@ -842,23 +823,23 @@ function PlanGeneratorTab() {
           >
             <Zap size={16} color="#000" fill="#000" />
           </div>
-          <h4 className="text-white font-bold text-base mb-0.5">{generatedPlan.name}</h4>
-          <p className="text-[#71717A] text-xs mb-3">{generatedPlan.type}</p>
+          <h4 className="text-foreground font-bold text-base mb-0.5">{generatedPlan.name}</h4>
+          <p className="text-muted-foreground text-xs mb-3">{generatedPlan.type}</p>
           <div className="flex gap-4">
-            <span className="text-xs flex items-center gap-1.5 text-[#A1A1AA]">
-              <Clock size={11} strokeWidth={1.5} />{generatedPlan.totalTime}<span className="text-[#A1A1AA] text-[10px]">min</span>
+            <span className="text-xs flex items-center gap-1.5 text-muted-foreground">
+              <Clock size={11} strokeWidth={1.5} />{generatedPlan.totalTime}<span className="text-[10px]">min</span>
             </span>
-            <span className="text-xs flex items-center gap-1.5 text-[#A1A1AA]">
-              <Flame size={11} strokeWidth={1.5} />{generatedPlan.totalCalories}<span className="text-[#A1A1AA] text-[10px]">kcal</span>
+            <span className="text-xs flex items-center gap-1.5 text-muted-foreground">
+              <Flame size={11} strokeWidth={1.5} />{generatedPlan.totalCalories}<span className="text-[10px]">kcal</span>
             </span>
-            <span className="text-xs flex items-center gap-1.5 text-[#A1A1AA]">
+            <span className="text-xs flex items-center gap-1.5 text-muted-foreground">
               <Dumbbell size={11} strokeWidth={1.5} />{generatedPlan.exercises.length} exercises
             </span>
           </div>
         </div>
 
         <div className="flex items-center justify-between mb-3">
-          <h4 className="text-white font-semibold text-sm">Exercises</h4>
+          <h4 className="text-foreground font-semibold text-sm">Exercises</h4>
           <button
             onClick={openEdit}
             className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold transition-all"
@@ -871,15 +852,14 @@ function PlanGeneratorTab() {
           {generatedPlan.exercises.map((ex, i) => (
             <div
               key={i}
-              className="p-3.5 rounded-xl flex items-center gap-3"
-              style={{ background: "#111113", border: "1px solid #27272A" }}
+              className="p-3.5 rounded-xl flex items-center gap-3 bg-card border border-border"
             >
               <div className="w-7 h-7 rounded-lg flex items-center justify-center text-xs font-bold text-black shrink-0" style={{ background: ACCENT }}>
                 {i + 1}
               </div>
               <div className="flex-1">
-                <p className="text-white text-sm font-semibold">{ex.name}</p>
-                <p className="text-[#71717A] text-xs">
+                <p className="text-foreground text-sm font-semibold">{ex.name}</p>
+                <p className="text-muted-foreground text-xs">
                   {ex.sets && ex.reps ? `${ex.sets} × ${ex.reps} reps` : ex.durationSec ? `${ex.sets}× ${ex.durationSec}s` : ""}
                   {" · "}{ex.muscleGroups.join(", ")}
                 </p>
@@ -889,14 +869,14 @@ function PlanGeneratorTab() {
         </div>
 
         {/* ── Refine with AI ──────────────────────────────────── */}
-        <div className="mb-5 rounded-2xl overflow-hidden" style={{ border: "1px solid #27272A", background: "#111113" }}>
+        <div className="mb-5 rounded-2xl overflow-hidden bg-card border border-border">
           {/* Header */}
-          <div className="flex items-center gap-2 px-4 py-3" style={{ borderBottom: "1px solid #1C1C1E" }}>
+          <div className="flex items-center gap-2 px-4 py-3 border-b border-border">
             <div className="w-5 h-5 rounded-md flex items-center justify-center shrink-0" style={{ background: `${ACCENT}18` }}>
               <Zap size={11} style={{ color: ACCENT }} />
             </div>
-            <span className="text-white text-xs font-semibold">Refine with AI</span>
-            <span className="text-[#3F3F46] text-[10px] ml-auto">describe changes in plain text</span>
+            <span className="text-foreground text-xs font-semibold">Refine with AI</span>
+            <span className="text-muted-foreground text-[10px] ml-auto">describe changes in plain text</span>
           </div>
 
           {/* Refinement history */}
@@ -917,8 +897,8 @@ function PlanGeneratorTab() {
                       <Bot size={10} style={{ color: ACCENT }} />
                     </div>
                     <div
-                      className="px-3 py-2 rounded-2xl text-xs flex-1"
-                      style={{ background: "#1C1C1E", color: "#E4E4E7", border: "1px solid #27272A", borderRadius: "3px 14px 14px 14px" }}
+                      className="px-3 py-2 rounded-2xl text-xs flex-1 bg-muted text-foreground border border-border"
+                      style={{ borderRadius: "3px 14px 14px 14px" }}
                     >
                       {r.message}
                     </div>
@@ -930,7 +910,7 @@ function PlanGeneratorTab() {
                   <div className="w-5 h-5 rounded-full flex items-center justify-center shrink-0" style={{ background: `${ACCENT}18`, border: `1px solid ${ACCENT}35` }}>
                     <Bot size={10} style={{ color: ACCENT }} />
                   </div>
-                  <div className="px-3 py-2 rounded-2xl" style={{ background: "#1C1C1E", border: "1px solid #27272A", borderRadius: "3px 14px 14px 14px" }}>
+                  <div className="px-3 py-2 rounded-2xl bg-muted border border-border" style={{ borderRadius: "3px 14px 14px 14px" }}>
                     <div className="flex gap-1 items-center">
                       {[0, 1, 2].map(i => (
                         <motion.div key={i} className="w-1.5 h-1.5 rounded-full" style={{ background: ACCENT }}
@@ -953,8 +933,7 @@ function PlanGeneratorTab() {
                 <button
                   key={s}
                   onClick={() => refinePrompt(s)}
-                  className="px-2.5 py-1.5 rounded-lg text-[11px] transition-all"
-                  style={{ background: "#1C1C1E", border: "1px solid #27272A", color: "#A1A1AA" }}
+                  className="px-2.5 py-1.5 rounded-lg text-[11px] transition-all bg-muted border border-border text-muted-foreground hover:bg-muted/80"
                 >
                   {s}
                 </button>
@@ -970,19 +949,19 @@ function PlanGeneratorTab() {
               onKeyDown={e => e.key === "Enter" && refinePrompt(refineInput)}
               placeholder="e.g. make it shorter, add core work…"
               disabled={refining}
-              className="flex-1 rounded-xl px-3 py-2.5 text-white text-xs outline-none placeholder:text-[#3F3F46] transition-colors"
-              style={{ background: "#1C1C1E", border: `1px solid ${refineInput ? "#3F3F46" : "#27272A"}` }}
+              className="flex-1 rounded-xl px-3 py-2.5 text-foreground text-xs outline-none placeholder:text-muted-foreground transition-colors bg-muted border border-border"
+              style={{ borderColor: refineInput ? "var(--muted-foreground)" : "var(--border)" }}
             />
             <button
               onClick={() => refinePrompt(refineInput)}
               disabled={!refineInput.trim() || refining}
               className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0 transition-all"
               style={{
-                background: refineInput.trim() && !refining ? ACCENT : "#1C1C1E",
-                border: `1px solid ${refineInput.trim() && !refining ? ACCENT : "#27272A"}`,
+                background: refineInput.trim() && !refining ? ACCENT : "var(--muted)",
+                border: `1px solid ${refineInput.trim() && !refining ? ACCENT : "var(--border)"}`,
               }}
             >
-              <Send size={13} style={{ color: refineInput.trim() && !refining ? "#000" : "#71717A" }} />
+              <Send size={13} style={{ color: refineInput.trim() && !refining ? "#000" : "var(--muted-foreground)" }} />
             </button>
           </div>
         </div>
@@ -994,8 +973,8 @@ function PlanGeneratorTab() {
             className="flex-1 py-3 rounded-xl text-sm font-semibold flex items-center justify-center gap-1.5"
             style={{
               background: "transparent",
-              color: saved ? ACCENT : "#A1A1AA",
-              border: `1px solid ${saved ? ACCENT : "#27272A"}`,
+              color: saved ? ACCENT : "var(--muted-foreground)",
+              border: `1px solid ${saved ? ACCENT : "var(--border)"}`,
             }}
           >
             {saved ? <><Check size={14} /> Saved!</> : <><Bookmark size={14} /> Save Plan</>}
@@ -1018,7 +997,7 @@ function PlanGeneratorTab() {
               exit={{ opacity: 0, height: 0 }}
               className="overflow-hidden"
             >
-              <p className="text-[#A1A1AA] text-xs mb-2">Select day:</p>
+              <p className="text-muted-foreground text-xs mb-2">Select day:</p>
               <div className="flex flex-col gap-3 mb-3" style={{ maxHeight: 260, overflowY: "auto" }}>
                 {[0, 1, 2, 3, 4].map(w => {
                   const todayIdx = new Date().getDay() === 0 ? 6 : new Date().getDay() - 1;
@@ -1053,14 +1032,14 @@ function PlanGeneratorTab() {
                               onClick={() => !disabled && setScheduleDay(i)}
                               className="py-2 rounded-xl flex flex-col items-center gap-0.5 transition-all"
                               style={{
-                                background: scheduleDay === i ? `${ACCENT}15` : disabled ? "#0D0D0F" : "#1C1C1E",
-                                border: `1px solid ${scheduleDay === i ? ACCENT : disabled ? "#1C1C1E" : "#27272A"}`,
+                                background: scheduleDay === i ? `${ACCENT}15` : disabled ? "var(--muted)" : "var(--card)",
+                                border: `1px solid ${scheduleDay === i ? ACCENT : disabled ? "var(--muted)" : "var(--border)"}`,
                                 cursor: disabled ? "not-allowed" : "pointer",
-                                opacity: disabled ? 0.28 : 1,
+                                opacity: disabled ? 0.3 : 1,
                               }}
                             >
-                              <span className="text-[9px]" style={{ color: disabled ? "#3F3F46" : "#A1A1AA" }}>{dayNames[j]}</span>
-                              <span className="text-[10px] font-semibold" style={{ color: disabled ? "#3F3F46" : isToday ? ACCENT : "#fff" }}>{getDayDate(i)}</span>
+                              <span className="text-[9px]" style={{ color: disabled ? "var(--muted-foreground)" : "var(--muted-foreground)" }}>{dayNames[j]}</span>
+                              <span className="text-[10px] font-semibold" style={{ color: disabled ? "var(--muted-foreground)" : isToday ? ACCENT : "var(--foreground)" }}>{getDayDate(i)}</span>
                               {isToday && <span className="text-[7px]" style={{ color: ACCENT }}>Today</span>}
                             </button>
                           );
@@ -1113,8 +1092,8 @@ function PlanGeneratorTab() {
           </motion.div>
         </div>
         <div>
-          <h3 className="text-white text-xl font-bold">Building Your Plan</h3>
-          <p className="text-[#A1A1AA] text-sm mt-1">AI is analyzing your preferences...</p>
+          <h3 className="text-foreground text-xl font-bold">Building Your Plan</h3>
+          <p className="text-muted-foreground text-sm mt-1">AI is analyzing your preferences...</p>
         </div>
         <div className="flex gap-1">
           {[0, 1, 2].map(i => (
@@ -1139,7 +1118,7 @@ function PlanGeneratorTab() {
           <div
             key={i}
             className="flex-1 h-1 rounded-full transition-all"
-            style={{ background: i <= step ? ACCENT : "#27272A" }}
+            style={{ background: i <= step ? ACCENT : "var(--border)" }}
           />
         ))}
       </div>
@@ -1156,8 +1135,8 @@ function PlanGeneratorTab() {
           {step === 0 && (
             <div>
               <p className="text-xs font-semibold mb-1 uppercase tracking-wider" style={{ color: ACCENT }}>Step 1</p>
-              <h3 className="text-white text-xl font-bold mb-1">Workout Type</h3>
-              <p className="text-[#A1A1AA] text-sm mb-5">What kind of training?</p>
+              <h3 className="text-foreground text-xl font-bold mb-1">Workout Type</h3>
+              <p className="text-muted-foreground text-sm mb-5">What kind of training?</p>
               <div className="flex flex-col gap-3">
                 {[
                   { id: "strength", label: "💪 Strength Training", desc: "Build muscle and increase power" },
@@ -1169,12 +1148,12 @@ function PlanGeneratorTab() {
                     onClick={() => setType(opt.id)}
                     className="p-4 rounded-2xl border text-left transition-all"
                     style={{
-                      background: type === opt.id ? `${ACCENT}12` : "#111113",
-                      borderColor: type === opt.id ? ACCENT : "#27272A",
+                      background: type === opt.id ? `${ACCENT}12` : "var(--card)",
+                      borderColor: type === opt.id ? ACCENT : "var(--border)",
                     }}
                   >
-                    <p className="text-white font-semibold text-sm">{opt.label}</p>
-                    <p className="text-[#A1A1AA] text-xs mt-0.5">{opt.desc}</p>
+                    <p className="text-foreground font-semibold text-sm">{opt.label}</p>
+                    <p className="text-muted-foreground text-xs mt-0.5">{opt.desc}</p>
                   </button>
                 ))}
               </div>
@@ -1185,8 +1164,8 @@ function PlanGeneratorTab() {
           {step === 1 && (
             <div>
               <p className="text-xs font-semibold mb-1 uppercase tracking-wider" style={{ color: ACCENT }}>Step 2</p>
-              <h3 className="text-white text-xl font-bold mb-1">Plan Duration</h3>
-              <p className="text-[#A1A1AA] text-sm mb-5">Single session or multi-week?</p>
+              <h3 className="text-foreground text-xl font-bold mb-1">Plan Duration</h3>
+              <p className="text-muted-foreground text-sm mb-5">Single session or multi-week?</p>
               <div className="flex flex-col gap-3">
                 {[
                   { id: "single", label: "Single Workout", desc: "One focused training session" },
@@ -1198,12 +1177,12 @@ function PlanGeneratorTab() {
                     onClick={() => setPlanType(opt.id)}
                     className="p-4 rounded-2xl border text-left transition-all"
                     style={{
-                      background: planType === opt.id ? `${ACCENT}12` : "#111113",
-                      borderColor: planType === opt.id ? ACCENT : "#27272A",
+                      background: planType === opt.id ? `${ACCENT}12` : "var(--card)",
+                      borderColor: planType === opt.id ? ACCENT : "var(--border)",
                     }}
                   >
-                    <p className="text-white font-semibold text-sm">{opt.label}</p>
-                    <p className="text-[#A1A1AA] text-xs mt-0.5">{opt.desc}</p>
+                    <p className="text-foreground font-semibold text-sm">{opt.label}</p>
+                    <p className="text-muted-foreground text-xs mt-0.5">{opt.desc}</p>
                   </button>
                 ))}
               </div>
@@ -1214,8 +1193,8 @@ function PlanGeneratorTab() {
           {step === 2 && (
             <div>
               <p className="text-xs font-semibold mb-1 uppercase tracking-wider" style={{ color: ACCENT }}>Step 3</p>
-              <h3 className="text-white text-xl font-bold mb-1">Session Duration</h3>
-              <p className="text-[#A1A1AA] text-sm mb-5">How long per session?</p>
+              <h3 className="text-foreground text-xl font-bold mb-1">Session Duration</h3>
+              <p className="text-muted-foreground text-sm mb-5">How long per session?</p>
               <div className="flex flex-col gap-2">
                 {[15, 30, 45, 60, 90].map(d => (
                   <button
@@ -1223,11 +1202,11 @@ function PlanGeneratorTab() {
                     onClick={() => setDuration(d)}
                     className="p-4 rounded-2xl border flex items-center justify-between transition-all"
                     style={{
-                      background: duration === d ? `${ACCENT}12` : "#111113",
-                      borderColor: duration === d ? ACCENT : "#27272A",
+                      background: duration === d ? `${ACCENT}12` : "var(--card)",
+                      borderColor: duration === d ? ACCENT : "var(--border)",
                     }}
                   >
-                    <span className="text-white font-semibold text-sm">{d} minutes</span>
+                    <span className="text-foreground font-semibold text-sm">{d} minutes</span>
                     {duration === d && <Check size={14} style={{ color: ACCENT }} />}
                   </button>
                 ))}
@@ -1239,19 +1218,18 @@ function PlanGeneratorTab() {
           {step === 3 && type === "strength" && (
             <div>
               <p className="text-xs font-semibold mb-1 uppercase tracking-wider" style={{ color: ACCENT }}>Step 4</p>
-              <h3 className="text-white text-xl font-bold mb-1">Equipment</h3>
-              <p className="text-[#A1A1AA] text-sm mb-5">What do you have access to?</p>
+              <h3 className="text-foreground text-xl font-bold mb-1">Equipment</h3>
+              <p className="text-muted-foreground text-sm mb-5">What do you have access to?</p>
               <div className="flex flex-wrap gap-2">
                 {EQUIPMENT.map(e => (
                   <button
                     key={e}
                     onClick={() => toggleEquipment(e)}
-                    className="px-4 py-2.5 rounded-xl text-sm font-semibold transition-all"
+                    className="px-4 py-2.5 rounded-xl text-sm font-semibold transition-all border"
                     style={{
-                      background: equipment.includes(e) ? `${ACCENT}15` : "#111113",
-                      borderColor: equipment.includes(e) ? ACCENT : "#27272A",
-                      border: "1px solid",
-                      color: equipment.includes(e) ? ACCENT : "#A1A1AA",
+                      background: equipment.includes(e) ? `${ACCENT}15` : "var(--card)",
+                      borderColor: equipment.includes(e) ? ACCENT : "var(--border)",
+                      color: equipment.includes(e) ? ACCENT : "var(--muted-foreground)",
                     }}
                   >
                     {e}
@@ -1267,8 +1245,8 @@ function PlanGeneratorTab() {
               <p className="text-xs font-semibold mb-1 uppercase tracking-wider" style={{ color: ACCENT }}>
                 Step {type === "strength" ? 5 : 4}
               </p>
-              <h3 className="text-white text-xl font-bold mb-1">Intensity</h3>
-              <p className="text-[#A1A1AA] text-sm mb-5">How hard do you want to push?</p>
+              <h3 className="text-foreground text-xl font-bold mb-1">Intensity</h3>
+              <p className="text-muted-foreground text-sm mb-5">How hard do you want to push?</p>
               <div className="flex flex-col gap-3">
                 {[
                   { id: "low", label: "🌱 Low", desc: "Light effort, recovery-focused" },
@@ -1280,12 +1258,12 @@ function PlanGeneratorTab() {
                     onClick={() => setIntensity(opt.id)}
                     className="p-4 rounded-2xl border text-left transition-all"
                     style={{
-                      background: intensity === opt.id ? `${ACCENT}12` : "#111113",
-                      borderColor: intensity === opt.id ? ACCENT : "#27272A",
+                      background: intensity === opt.id ? `${ACCENT}12` : "var(--card)",
+                      borderColor: intensity === opt.id ? ACCENT : "var(--border)",
                     }}
                   >
-                    <p className="text-white font-semibold text-sm">{opt.label}</p>
-                    <p className="text-[#A1A1AA] text-xs mt-0.5">{opt.desc}</p>
+                    <p className="text-foreground font-semibold text-sm">{opt.label}</p>
+                    <p className="text-muted-foreground text-xs mt-0.5">{opt.desc}</p>
                   </button>
                 ))}
               </div>
@@ -1299,8 +1277,7 @@ function PlanGeneratorTab() {
         {step > 0 && (
           <button
             onClick={() => setStep(s => s - 1)}
-            className="flex-1 py-3.5 rounded-2xl font-semibold text-sm transition-all"
-            style={{ background: "transparent", color: "#A1A1AA", border: "1px solid #27272A" }}
+            className="flex-1 py-3.5 rounded-2xl font-semibold text-sm transition-all border border-border text-muted-foreground hover:bg-muted"
           >
             Back
           </button>

@@ -46,6 +46,9 @@ interface AppContextType {
   logWeight: (exerciseId: string, weight: number) => void;
   getBestWeight: (exerciseId: string) => number | null;
   getLastWeight: (exerciseId: string) => number | null;
+  // ─── ÚJ: Dark mode állapotok ───
+  darkMode: boolean;
+  setDarkMode: (v: boolean) => void;
 }
 
 const defaultProfile: UserProfile = {
@@ -81,6 +84,27 @@ export function AppProvider({ children }: { children: ReactNode }) {
     const saved = localStorage.getItem("fitai_weights");
     return saved ? JSON.parse(saved) : [];
   });
+
+  // ─── ÚJ: Dark mode állapot, mentés a localStorage-be (alapértelmezett: true) ───
+  const [darkModeState, setDarkModeState] = useState<boolean>(() => {
+    const saved = localStorage.getItem("fitai_darkmode");
+    return saved ? JSON.parse(saved) : true;
+  });
+
+  // ─── ÚJ: Téma változtatása és osztály beállítása a gyökér (html) elemen ───
+  useEffect(() => {
+    if (darkModeState) {
+      document.documentElement.classList.add("dark");
+    } else {
+      document.documentElement.classList.remove("dark");
+    }
+  }, [darkModeState]);
+
+  const setDarkMode = (v: boolean) => {
+    localStorage.setItem("fitai_darkmode", String(v));
+    setDarkModeState(v);
+  };
+  // ─────────────────────────────────────────────────────────────────────────────
 
   const setOnboarded = (v: boolean) => {
     localStorage.setItem("fitai_onboarded", String(v));
@@ -205,6 +229,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
         logWeight,
         getBestWeight,
         getLastWeight,
+        // ─── ÚJ: Átadjuk a contextnek a dark mode változókat ───
+        darkMode: darkModeState,
+        setDarkMode,
       }}
     >
       {children}

@@ -76,16 +76,19 @@ export function CalendarPage() {
   const navigate = useNavigate();
 
   const weekMonday = getWeekMonday();
-  const todayIdx   = getTodayDOW(); // dayIndex of today
+  const todayIdx   = getTodayDOW(); // Hányadik napja a hétnek ma (0-6)
 
-  // stripStart: dayIndex of the LEFTMOST day in the 7-day strip
-  // Initial: today at position 3 → stripStart = todayIdx - 3
-  const [stripStart, setStripStart] = useState(() => todayIdx - 3);
+  // stripStart: A hétfőtől számított eltolás. 
+  // 0 = az eheti hétfő. Így a naptár hétfőtől vasárnapig mutat.
+  const [stripStart, setStripStart] = useState(0);
 
   const [selectedDay, setSelectedDay] = useState(todayIdx);
 
   // Modal states
   const [scheduleModal, setScheduleModal] = useState<string | null>(null);
+  const [selectedModalDays, setSelectedModalDays] = useState<number[]>([]);
+  const [rescheduleItemId, setRescheduleItemId] = useState<string | null>(null);
+  const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
   const [modalMonth, setModalMonth] = useState<Date>(() => {
     const d = new Date(); d.setDate(1); d.setHours(0, 0, 0, 0); return d;
   });
@@ -100,11 +103,23 @@ export function CalendarPage() {
   const isFutureDay = selectedDay > todayIdx;
   const isPastDay   = selectedDay < todayIdx;
 
-  const daySessions = completedSessions.filter(s => s.date === selectedDateStr);
-  const dayCalories = daySessions.reduce((a, s) => a + s.calories, 0);
-  const dayTime     = daySessions.reduce((a, s) => a + s.duration, 0);
-  const dayDone     = daySessions.length;
   const daySchedule = schedule.filter(s => s.dayIndex === selectedDay);
+
+  let dayCalories = 0;
+  let dayTime = 0;
+  let dayDone = 0;
+
+  daySchedule.forEach(item => {
+    const isEffectiveCompleted = item.completed && !isFutureDay;
+    if (isEffectiveCompleted) {
+      const workout = workouts.find(w => w.id === item.workoutId);
+      if (workout) {
+        dayCalories += workout.calories;
+        dayTime += workout.duration;
+        dayDone += 1;
+      }
+    }
+  });
 
   const savedWorkouts   = savedTemplates
     .map(id => workouts.find(w => w.id === id))
@@ -114,31 +129,53 @@ export function CalendarPage() {
     .slice(0, 3);
   const hasWorkout = (idx: number) => schedule.some(s => s.dayIndex === idx);
 
-  // 7 days shown in the strip
+  // 7 napot jelenítünk meg hétfőtől vasárnapig
   const stripDays = Array.from({ length: 7 }, (_, j) => stripStart + j);
 
-  // Week label in the navigator header
   const weekLabel = (() => {
-    if (
-      stripStart <= todayIdx && todayIdx <= stripStart + 6 &&
-      stripStart === todayIdx - 3
-    ) return "This Week";
+    if (stripStart === 0) return "This Week";
     return formatWeekLabel(stripStart, weekMonday);
   })();
 
   const modalGrid = buildMonthGrid(modalMonth.getFullYear(), modalMonth.getMonth());
 
-  const openScheduleModal = (workoutId: string) => {
+  const openScheduleModal = (workoutId: string, existingItemId?: string) => {
     const d = new Date(); d.setDate(1); d.setHours(0, 0, 0, 0);
     setModalMonth(d);
+    setSelectedModalDays([]);
     setScheduleModal(workoutId);
+    setRescheduleItemId(existingItemId || null);
   };
 
-  // ──────────────────────────────────────────────────────────
-  return (
-    <div className="bg-[#09090B] px-4 pt-12 pb-6">
+  const closeScheduleModal = () => {
+    setScheduleModal(null);
+    setSelectedModalDays([]);
+    setRescheduleItemId(null);
+  };
 
-      {/* Active workout overlay */}
+  const handleScheduleConfirm = () => {
+    if (scheduleModal) {
+      if (rescheduleItemId) {
+        removeFromSchedule(rescheduleItemId);
+      }
+      
+      selectedModalDays.forEach(dayIdx => {
+        addToSchedule(scheduleModal, dayIdx);
+      });
+    }
+    closeScheduleModal();
+  };
+
+  const confirmDelete = () => {
+    if (deleteConfirmId) {
+      removeFromSchedule(deleteConfirmId);
+      setDeleteConfirmId(null);
+    }
+  };
+
+  return (
+    <div className="bg-background px-4 pt-12 pb-6 min-h-screen transition-colors duration-300">
+
       <AnimatePresence>
         {activeWorkout && (
           <ActiveWorkoutView workout={activeWorkout} onClose={() => setActiveWorkout(null)} />
@@ -147,8 +184,8 @@ export function CalendarPage() {
 
       {/* ── Header ──────────────────────────────────────── */}
       <div className="mb-5 px-2">
-        <p className="text-[#A1A1AA] text-sm">Plan & Track</p>
-        <h1 className="text-white text-2xl font-bold mt-0.5">
+        <p className="text-muted-foreground text-sm">Plan & Track</p>
+        <h1 className="text-foreground text-2xl font-bold mt-0.5">
           Workout <span style={{ color: ACCENT }}>Calendar</span>
         </h1>
       </div>
@@ -158,20 +195,19 @@ export function CalendarPage() {
         <div className="flex items-center gap-2 mb-2.5">
           <span className="text-[10px] font-semibold uppercase tracking-widest"
             style={{ color: ACCENT }}>This day</span>
-          <div className="flex-1 h-px" style={{ background: "#27272A" }} />
+          <div className="flex-1 h-px bg-border" />
         </div>
         <div className="grid grid-cols-4 gap-2">
           {[
-            { label: "kcal",    value: dayCalories > 0 ? dayCalories.toLocaleString() : "—", icon: Flame,       color: "#FF6B35" },
-            { label: "min",     value: dayTime > 0 ? dayTime : "—",                           icon: Clock,       color: "#3B82F6" },
-            { label: "done",    value: dayDone,                                                icon: CheckSquare, color: ACCENT    },
-            { label: "planned", value: daySchedule.length,                                    icon: Calendar,    color: "#A855F7" },
+            { label: "kcal",    value: dayCalories,          icon: Flame,       color: "#FF6B35" },
+            { label: "min",     value: dayTime,              icon: Clock,       color: "#3B82F6" },
+            { label: "done",    value: dayDone,              icon: CheckSquare, color: ACCENT    },
+            { label: "planned", value: daySchedule.length,   icon: Calendar,    color: "#A855F7" },
           ].map(s => (
-            <div key={s.label} className="p-3 rounded-xl flex flex-col items-center gap-1"
-              style={{ background: "#111113", border: "1px solid #27272A" }}>
+            <div key={s.label} className="p-3 rounded-xl flex flex-col items-center gap-1 bg-card border border-border transition-colors">
               <s.icon size={13} style={{ color: s.color }} />
-              <p className="text-white text-base font-bold">{s.value}</p>
-              <p className="text-[#A1A1AA] text-[9px]">{s.label}</p>
+              <p className="text-foreground text-base font-bold">{s.value}</p>
+              <p className="text-muted-foreground text-[9px]">{s.label}</p>
             </div>
           ))}
         </div>
@@ -179,34 +215,29 @@ export function CalendarPage() {
 
       {/* ── Week navigator + 7-day strip ─────────────────── */}
       <div className="mb-6 px-2">
-
-        {/* Navigator row */}
         <div className="flex items-center gap-2 mb-3">
           <button
             onClick={() => setStripStart(s => s - 7)}
-            className="w-8 h-8 rounded-xl flex items-center justify-center transition-all"
-            style={{ background: "#111113", border: "1px solid #27272A" }}
+            className="w-8 h-8 rounded-xl flex items-center justify-center transition-all bg-card border border-border hover:bg-muted"
           >
-            <ChevronLeft size={15} style={{ color: "#A1A1AA" }} />
+            <ChevronLeft size={15} className="text-muted-foreground" />
           </button>
 
           <div className="flex-1 text-center">
-            <p className="text-white text-sm font-semibold">{weekLabel}</p>
-            <p className="text-[#A1A1AA] text-[10px] mt-0.5">
+            <p className="text-foreground text-sm font-semibold">{weekLabel}</p>
+            <p className="text-muted-foreground text-[10px] mt-0.5">
               {formatWeekLabel(stripStart, weekMonday)}
             </p>
           </div>
 
           <button
             onClick={() => setStripStart(s => s + 7)}
-            className="w-8 h-8 rounded-xl flex items-center justify-center transition-all"
-            style={{ background: "#111113", border: "1px solid #27272A" }}
+            className="w-8 h-8 rounded-xl flex items-center justify-center transition-all bg-card border border-border hover:bg-muted"
           >
-            <ChevronRight size={15} style={{ color: "#A1A1AA" }} />
+            <ChevronRight size={15} className="text-muted-foreground" />
           </button>
         </div>
 
-        {/* 7-day strip */}
         <div className="grid grid-cols-7 gap-1">
           {stripDays.map(idx => {
             const date     = idxToDate(idx, weekMonday);
@@ -222,17 +253,17 @@ export function CalendarPage() {
                 onClick={() => setSelectedDay(idx)}
                 className="flex flex-col items-center gap-1 py-2.5 rounded-xl transition-all"
                 style={{
-                  background: isSel ? ACCENT : "#111113",
-                  border: `1px solid ${isSel ? ACCENT : isToday ? "#52525B" : "#27272A"}`,
+                  background: isSel ? ACCENT : "var(--card)",
+                  border: `1px solid ${isSel ? ACCENT : isToday ? "var(--muted-foreground)" : "var(--border)"}`,
                   opacity: isPast ? 0.45 : 1,
                 }}
               >
                 <span className="text-[9px] font-semibold"
-                  style={{ color: isSel ? "#000" : "#A1A1AA" }}>
+                  style={{ color: isSel ? "#000" : "var(--muted-foreground)" }}>
                   {dayNames[dow]}
                 </span>
                 <span className="text-sm font-bold"
-                  style={{ color: isSel ? "#000" : isToday ? ACCENT : isPast ? "#3F3F46" : "#fff" }}>
+                  style={{ color: isSel ? "#000" : isToday ? ACCENT : isPast ? "var(--muted-foreground)" : "var(--foreground)" }}>
                   {date.getDate()}
                 </span>
                 {isToday && !isSel && (
@@ -251,8 +282,8 @@ export function CalendarPage() {
       {/* ── Selected day workouts ─────────────────────────── */}
       <div className="mb-6 px-2">
         <div className="flex items-center justify-between mb-3">
-          <h2 className="text-white text-base font-semibold">{selectedDayLabel}</h2>
-          <span className="text-[#A1A1AA] text-xs">
+          <h2 className="text-foreground text-base font-semibold">{selectedDayLabel}</h2>
+          <span className="text-muted-foreground text-xs">
             {daySchedule.length} workout{daySchedule.length !== 1 ? "s" : ""}
           </span>
         </div>
@@ -260,10 +291,9 @@ export function CalendarPage() {
         <AnimatePresence>
           {daySchedule.length === 0 ? (
             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}
-              className="py-8 flex flex-col items-center gap-3"
-              style={{ background: "#111113", borderRadius: 16, border: "1px solid #27272A" }}>
-              <Calendar size={30} style={{ color: "#71717A" }} />
-              <p className="text-[#A1A1AA] text-sm">No workouts scheduled</p>
+              className="py-8 flex flex-col items-center gap-3 bg-card border border-border rounded-2xl">
+              <Calendar size={30} className="text-muted-foreground" />
+              <p className="text-muted-foreground text-sm">No workouts scheduled</p>
               {!isPastDay && (
                 <button onClick={() => navigate("/app/browse")}
                   className="px-4 py-2 rounded-xl text-sm font-semibold text-black flex items-center gap-1.5"
@@ -277,13 +307,14 @@ export function CalendarPage() {
               const workout = workouts.find(w => w.id === item.workoutId);
               if (!workout) return null;
               const effectiveCompleted = item.completed && !isFutureDay;
+              
               return (
                 <motion.div key={item.id} layout
                   initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, x: -20 }}
                   className="mb-3 p-4 rounded-2xl"
                   style={{
-                    background: effectiveCompleted ? "#0D0D0F" : "#111113",
-                    border: `1px solid ${effectiveCompleted ? "#1C1C1E" : "#27272A"}`,
+                    background: effectiveCompleted ? "var(--muted)" : "var(--card)",
+                    border: `1px solid var(--border)`,
                     opacity: effectiveCompleted ? 0.6 : 1,
                   }}>
                   <div className="flex items-start justify-between mb-2">
@@ -293,49 +324,62 @@ export function CalendarPage() {
                         {workout.category.toUpperCase()}
                       </span>
                       <h3 className="font-semibold mt-1 text-sm"
-                        style={{ textDecoration: effectiveCompleted ? "line-through" : "none", color: effectiveCompleted ? "#71717A" : "#fff" }}>
+                        style={{ 
+                          textDecoration: effectiveCompleted ? "line-through" : "none", 
+                          color: effectiveCompleted ? "var(--muted-foreground)" : "var(--foreground)" 
+                        }}>
                         {workout.name}
                       </h3>
                     </div>
-                    {effectiveCompleted && <Check size={15} style={{ color: ACCENT }} />}
+                    {effectiveCompleted ? (
+                      <Check size={15} style={{ color: ACCENT }} />
+                    ) : (
+                      <button
+                        onClick={() => openScheduleModal(workout.id, item.id)}
+                        className="text-muted-foreground hover:text-foreground text-[10px] font-semibold px-2.5 py-1.5 rounded-md transition-colors bg-muted border border-border"
+                      >
+                        Reschedule
+                      </button>
+                    )}
                   </div>
                   <div className="flex gap-3 mb-3">
-                    <span className="text-[#A1A1AA] text-xs flex items-center gap-1">
+                    <span className="text-muted-foreground text-xs flex items-center gap-1">
                       <Clock size={10} strokeWidth={1.5} /> {workout.duration}<span className="text-[10px]">min</span>
                     </span>
-                    <span className="text-[#A1A1AA] text-xs flex items-center gap-1">
+                    <span className="text-muted-foreground text-xs flex items-center gap-1">
                       <Flame size={10} strokeWidth={1.5} /> {workout.calories}<span className="text-[10px]">kcal</span>
                     </span>
-                    <span className="text-[#71717A] text-xs capitalize">{workout.level}</span>
+                    <span className="text-muted-foreground text-xs capitalize">{workout.level}</span>
                   </div>
+                  
                   {!effectiveCompleted ? (
                     <div className="flex gap-2">
                       <button
                         onClick={() => !isFutureDay && setActiveWorkout(workout)}
-                        className="flex-1 py-2.5 rounded-xl text-xs font-semibold flex items-center justify-center gap-1.5"
+                        className="flex-1 py-2 rounded-xl text-xs font-semibold flex items-center justify-center gap-1.5"
                         style={{
-                          background: isFutureDay ? "#1C1C1E" : ACCENT,
-                          color: isFutureDay ? "#3F3F46" : "#000",
+                          background: isFutureDay ? "var(--muted)" : ACCENT,
+                          color: isFutureDay ? "var(--muted-foreground)" : "#000",
                           cursor: isFutureDay ? "not-allowed" : "pointer",
                         }}>
-                        <Play size={12} fill={isFutureDay ? "#3F3F46" : "#000"} strokeWidth={0} />
+                        <Play size={12} fill={isFutureDay ? "var(--muted-foreground)" : "#000"} strokeWidth={0} />
                         {isFutureDay ? "Upcoming" : "Start"}
                       </button>
+                      
                       {!isFutureDay && (
                         <button onClick={() => markComplete(item.id)}
-                          className="flex-1 py-2.5 rounded-xl text-xs font-semibold flex items-center justify-center gap-1.5"
-                          style={{ background: "transparent", color: "#A1A1AA", border: "1px solid #27272A" }}>
+                          className="flex-1 py-2 rounded-xl text-xs font-semibold flex items-center justify-center gap-1.5 text-muted-foreground bg-transparent border border-border hover:bg-muted transition-colors">
                           <Check size={12} /> Done
                         </button>
                       )}
-                      <button onClick={() => removeFromSchedule(item.id)}
-                        className="w-10 rounded-xl flex items-center justify-center"
-                        style={{ background: "transparent", border: "1px solid #27272A" }}>
-                        <Trash2 size={13} style={{ color: "#71717A" }} />
+
+                      <button onClick={() => setDeleteConfirmId(item.id)}
+                        className="w-10 shrink-0 rounded-xl flex items-center justify-center transition-colors bg-transparent border border-border hover:bg-muted text-muted-foreground">
+                        <Trash2 size={13} />
                       </button>
                     </div>
                   ) : (
-                    <p className="text-[#71717A] text-xs text-center py-1">Completed ✓</p>
+                    <p className="text-muted-foreground text-xs text-center py-1">Completed ✓</p>
                   )}
                 </motion.div>
               );
@@ -348,30 +392,32 @@ export function CalendarPage() {
       {savedWorkouts.length > 0 && (
         <div className="mb-6 px-2">
           <div className="flex items-center justify-between mb-3">
-            <h2 className="text-white text-base font-semibold">Saved Templates</h2>
+            <h2 className="text-foreground text-base font-semibold">Saved Templates</h2>
             <Bookmark size={13} style={{ color: ACCENT }} />
           </div>
           <div className="flex flex-col gap-3">
             {savedWorkouts.map(workout => (
-              <div key={workout.id} className="p-4 rounded-2xl flex items-center justify-between"
-                style={{ background: "#111113", border: "1px solid #27272A" }}>
-                <div className="flex-1 min-w-0 mr-3">
-                  <p className="text-white text-sm font-semibold truncate">{workout.name}</p>
-                  <p className="text-[#71717A] text-xs mt-0.5 flex items-center gap-2">
+              <div key={workout.id} className="p-4 rounded-2xl flex items-center justify-between bg-card border border-border">
+                <div className="flex-1 min-w-0 mr-2">
+                  <p className="text-foreground text-sm font-semibold truncate">{workout.name}</p>
+                  <p className="text-muted-foreground text-xs mt-0.5 flex items-center gap-2">
                     <Clock size={10} strokeWidth={1.5} /> {workout.duration} min
                     <Flame size={10} strokeWidth={1.5} /> {workout.calories} kcal
                   </p>
                 </div>
-                <div className="flex gap-2">
+                <div className="flex gap-1.5">
                   <button onClick={() => setActiveWorkout(workout)}
-                    className="w-9 h-9 rounded-lg flex items-center justify-center"
+                    className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0"
                     style={{ background: ACCENT }}>
-                    <Play size={13} fill="#000" strokeWidth={0} />
+                    <Play size={12} fill="#000" strokeWidth={0} />
+                  </button>
+                  <button onClick={() => addToSchedule(workout.id, selectedDay)}
+                    className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0 bg-transparent border border-border hover:bg-muted transition-colors">
+                    <Plus size={14} style={{ color: ACCENT }} />
                   </button>
                   <button onClick={() => openScheduleModal(workout.id)}
-                    className="px-3 py-2 rounded-lg text-xs font-semibold flex items-center gap-1"
-                    style={{ background: "transparent", color: "#A1A1AA", border: "1px solid #27272A" }}>
-                    <Plus size={11} /> Schedule
+                    className="px-2.5 h-8 rounded-lg text-[11px] font-semibold flex items-center gap-1 shrink-0 text-muted-foreground bg-transparent border border-border hover:bg-muted transition-colors">
+                    <Calendar size={11} /> Schedule
                   </button>
                 </div>
               </div>
@@ -382,25 +428,27 @@ export function CalendarPage() {
 
       {/* ── Recommendations ──────────────────────────────── */}
       <div className="mb-4 px-2">
-        <h2 className="text-white text-base font-semibold mb-3">Recommended</h2>
+        <h2 className="text-foreground text-base font-semibold mb-3">Recommended</h2>
         <div className="flex flex-col gap-3">
           {recommendations.map(workout => (
-            <div key={workout.id} className="p-4 rounded-2xl flex items-center justify-between"
-              style={{ background: "#111113", border: "1px solid #27272A" }}>
-              <div className="flex-1 min-w-0 mr-3">
-                <p className="text-white text-sm font-semibold truncate">{workout.name}</p>
-                <p className="text-[#71717A] text-xs mt-0.5 capitalize">{workout.category} · {workout.level}</p>
+            <div key={workout.id} className="p-4 rounded-2xl flex items-center justify-between bg-card border border-border">
+              <div className="flex-1 min-w-0 mr-2">
+                <p className="text-foreground text-sm font-semibold truncate">{workout.name}</p>
+                <p className="text-muted-foreground text-xs mt-0.5 capitalize">{workout.category} · {workout.level}</p>
               </div>
-              <div className="flex gap-2">
+              <div className="flex gap-1.5">
                 <button onClick={() => setActiveWorkout(workout)}
-                  className="w-9 h-9 rounded-lg flex items-center justify-center"
+                  className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0"
                   style={{ background: ACCENT }}>
-                  <Play size={13} fill="#000" strokeWidth={0} />
+                  <Play size={12} fill="#000" strokeWidth={0} />
+                </button>
+                <button onClick={() => addToSchedule(workout.id, selectedDay)}
+                  className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0 bg-transparent border border-border hover:bg-muted transition-colors">
+                  <Plus size={14} style={{ color: ACCENT }} />
                 </button>
                 <button onClick={() => openScheduleModal(workout.id)}
-                  className="w-9 h-9 rounded-lg flex items-center justify-center"
-                  style={{ background: "transparent", border: "1px solid #27272A" }}>
-                  <Plus size={13} style={{ color: ACCENT }} />
+                  className="px-2.5 h-8 rounded-lg text-[11px] font-semibold flex items-center gap-1 shrink-0 text-muted-foreground bg-transparent border border-border hover:bg-muted transition-colors">
+                  <Calendar size={11} /> Schedule
                 </button>
               </div>
             </div>
@@ -408,84 +456,127 @@ export function CalendarPage() {
         </div>
       </div>
 
+      {/* ── Delete Confirmation Modal ────────────────────── */}
+      <AnimatePresence>
+        {deleteConfirmId && (
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[60] flex items-center justify-center px-4"
+            style={{ background: "rgba(0,0,0,0.85)" }}
+            onClick={() => setDeleteConfirmId(null)}>
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.95, opacity: 0 }}
+              transition={{ type: "spring", damping: 26 }}
+              className="w-full max-w-[320px] rounded-3xl p-6 flex flex-col items-center text-center shadow-2xl bg-card border border-border"
+              onClick={e => e.stopPropagation()}>
+              
+              <div className="w-14 h-14 rounded-full flex items-center justify-center mb-4" style={{ background: "#FF3B6B15" }}>
+                <Trash2 size={24} style={{ color: "#FF3B6B" }} />
+              </div>
+              
+              <h3 className="text-foreground text-lg font-bold mb-2">Delete Workout?</h3>
+              <p className="text-muted-foreground text-sm mb-6 leading-relaxed">
+                Are you sure you want to remove this workout from your schedule? This action cannot be undone.
+              </p>
+              
+              <div className="flex gap-3 w-full">
+                <button onClick={() => setDeleteConfirmId(null)}
+                  className="flex-1 py-3 rounded-xl text-sm font-bold transition-all text-foreground border border-border hover:bg-muted">
+                  Cancel
+                </button>
+                <button onClick={confirmDelete}
+                  className="flex-1 py-3 rounded-xl text-sm font-bold text-white transition-all"
+                  style={{ background: "#FF3B6B" }}>
+                  Delete
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       {/* ── Schedule Modal — month calendar picker ────────── */}
       <AnimatePresence>
         {scheduleModal && (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-            className="fixed inset-0 z-50 flex items-end justify-center"
+            className="fixed inset-0 z-50 flex items-end justify-center pb-[100px] px-4"
             style={{ background: "rgba(0,0,0,0.85)" }}
-            onClick={() => setScheduleModal(null)}>
+            onClick={closeScheduleModal}>
             <motion.div
-              initial={{ y: 120 }} animate={{ y: 0 }} exit={{ y: 120 }}
+              initial={{ y: 50, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: 50, opacity: 0 }}
               transition={{ type: "spring", damping: 26 }}
-              className="w-full max-w-[430px] rounded-t-3xl overflow-hidden"
-              style={{ background: "#111113", border: "1px solid #27272A", maxHeight: "82vh" }}
+              className="w-full max-w-[430px] rounded-3xl overflow-hidden shadow-2xl flex flex-col bg-card border border-border"
+              style={{ maxHeight: "75vh" }}
               onClick={e => e.stopPropagation()}>
 
               {/* Fixed header */}
-              <div className="px-5 pt-5 pb-3" style={{ borderBottom: "1px solid #27272A" }}>
-                <div className="w-10 h-1 bg-[#3F3F46] rounded-full mx-auto mb-4" />
+              <div className="px-5 pt-5 pb-3 shrink-0 border-b border-border">
+                <div className="w-10 h-1 bg-muted-foreground/30 rounded-full mx-auto mb-4" />
                 <div className="flex items-center justify-between mb-4">
                   <div>
-                    <h3 className="text-white text-lg font-bold">Schedule Workout</h3>
-                    <p className="text-[#A1A1AA] text-xs mt-0.5">Pick any future day</p>
+                    <h3 className="text-foreground text-lg font-bold">
+                      {rescheduleItemId ? "Reschedule Workout" : "Schedule Workout"}
+                    </h3>
+                    <p className="text-muted-foreground text-xs mt-0.5">
+                      {rescheduleItemId 
+                        ? "Move this workout to another day" 
+                        : "Select one or more future days"}
+                    </p>
                   </div>
-                  <button onClick={() => setScheduleModal(null)}
-                    className="w-8 h-8 rounded-xl flex items-center justify-center text-[#A1A1AA]"
-                    style={{ background: "#1C1C1E" }}>✕</button>
+                  <button onClick={closeScheduleModal}
+                    className="w-8 h-8 rounded-xl flex items-center justify-center text-muted-foreground bg-muted hover:bg-muted/80">✕</button>
                 </div>
                 {/* Month nav */}
                 <div className="flex items-center justify-between mb-3">
                   <button onClick={() => setModalMonth(d => new Date(d.getFullYear(), d.getMonth() - 1, 1))}
-                    className="w-8 h-8 rounded-lg flex items-center justify-center"
-                    style={{ background: "#1C1C1E" }}>
-                    <ChevronLeft size={14} style={{ color: "#A1A1AA" }} />
+                    className="w-8 h-8 rounded-lg flex items-center justify-center bg-muted text-muted-foreground">
+                    <ChevronLeft size={14} />
                   </button>
-                  <span className="text-white text-sm font-semibold">
+                  <span className="text-foreground text-sm font-semibold">
                     {MONTH_NAMES[modalMonth.getMonth()]} {modalMonth.getFullYear()}
                   </span>
                   <button onClick={() => setModalMonth(d => new Date(d.getFullYear(), d.getMonth() + 1, 1))}
-                    className="w-8 h-8 rounded-lg flex items-center justify-center"
-                    style={{ background: "#1C1C1E" }}>
-                    <ChevronRight size={14} style={{ color: "#A1A1AA" }} />
+                    className="w-8 h-8 rounded-lg flex items-center justify-center bg-muted text-muted-foreground">
+                    <ChevronRight size={14} />
                   </button>
                 </div>
                 {/* DOW headers */}
                 <div className="grid grid-cols-7">
                   {dayNames.map(d => (
-                    <div key={d} className="text-center text-[9px] font-semibold text-[#3F3F46] pb-1">{d}</div>
+                    <div key={d} className="text-center text-[9px] font-semibold text-muted-foreground pb-1">{d}</div>
                   ))}
                 </div>
               </div>
 
               {/* Scrollable grid */}
-              <div className="overflow-y-auto px-4 pb-6 pt-3"
-                style={{ maxHeight: "calc(82vh - 215px)" }}>
+              <div className="overflow-y-auto px-4 pb-4 pt-3 flex-1">
                 <div className="grid grid-cols-7 gap-1">
                   {modalGrid.map((date, i) => {
                     if (!date) return <div key={`me-${i}`} />;
-                    const idx     = dateToIdx(date, weekMonday);
-                    const isPast  = idx < todayIdx;
-                    const isToday = idx === todayIdx;
+                    const idx        = dateToIdx(date, weekMonday);
+                    const isPast     = idx < todayIdx;
+                    const isToday    = idx === todayIdx;
+                    const isSelected = selectedModalDays.includes(idx);
+                    
                     return (
                       <button key={date.toISOString()} disabled={isPast}
                         onClick={() => {
                           if (isPast) return;
-                          addToSchedule(scheduleModal, idx);
-                          setScheduleModal(null);
+                          setSelectedModalDays(prev => 
+                            prev.includes(idx) ? prev.filter(d => d !== idx) : [...prev, idx]
+                          );
                         }}
                         className="py-2.5 rounded-xl flex flex-col items-center gap-0.5 transition-all"
                         style={{
-                          background: isPast ? "#0D0D0F" : isToday ? `${ACCENT}18` : "#1C1C1E",
-                          border: `1px solid ${isPast ? "#1C1C1E" : isToday ? ACCENT : "#27272A"}`,
+                          background: isSelected ? ACCENT : isPast ? "var(--muted)" : isToday ? `${ACCENT}18` : "var(--card)",
+                          border: `1px solid ${isSelected ? ACCENT : isPast ? "var(--border)" : isToday ? ACCENT : "var(--border)"}`,
                           cursor: isPast ? "not-allowed" : "pointer",
-                          opacity: isPast ? 0.28 : 1,
+                          opacity: isPast ? 0.4 : 1,
                         }}>
                         <span className="text-xs font-semibold"
-                          style={{ color: isPast ? "#3F3F46" : isToday ? ACCENT : "#fff" }}>
+                          style={{ color: isSelected ? "#000" : isPast ? "var(--muted-foreground)" : isToday ? ACCENT : "var(--foreground)" }}>
                           {date.getDate()}
                         </span>
-                        {isToday && (
+                        {isToday && !isSelected && (
                           <span className="text-[7px] leading-none" style={{ color: ACCENT }}>Today</span>
                         )}
                       </button>
@@ -493,6 +584,25 @@ export function CalendarPage() {
                   })}
                 </div>
               </div>
+
+              {/* Sticky footer action */}
+              <div className="px-4 pb-4 pt-2 shrink-0">
+                <button 
+                  onClick={handleScheduleConfirm}
+                  disabled={selectedModalDays.length === 0}
+                  className="w-full py-3.5 rounded-2xl text-sm font-bold flex items-center justify-center transition-all disabled:opacity-50"
+                  style={{
+                    background: selectedModalDays.length > 0 ? ACCENT : "var(--muted)",
+                    color: selectedModalDays.length > 0 ? "#000" : "var(--muted-foreground)",
+                    cursor: selectedModalDays.length > 0 ? "pointer" : "not-allowed"
+                  }}
+                >
+                  {selectedModalDays.length > 0 
+                    ? `Confirm for ${selectedModalDays.length} day${selectedModalDays.length > 1 ? 's' : ''}` 
+                    : "Select days"}
+                </button>
+              </div>
+
             </motion.div>
           </motion.div>
         )}
